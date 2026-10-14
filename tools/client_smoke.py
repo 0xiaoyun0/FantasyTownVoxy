@@ -1,3 +1,4 @@
+from paths import artifact, VERSION
 from paths import java_home,setting
 """Launch an isolated copy using the user's installed client libraries; no account data."""
 from pathlib import Path
@@ -8,9 +9,15 @@ SOURCE=Path(setting('HXZ_CLIENT'))
 MC=SOURCE.parent.parent
 FULL='--full' in sys.argv
 NO_HXZ='--without-hxz' in sys.argv
+QUALITY_VISUAL='--quality-visual' in sys.argv
+QUALITY_BASELINE='--quality-baseline' in sys.argv
+QUALITY_PREDICTION='--quality-prediction' in sys.argv
+RTF=next((x.split('=',1)[1] for x in sys.argv if x.startswith('--rtf=')),'default')
+QUALITY_LABEL=next((x.split('=',1)[1] for x in sys.argv if x.startswith('--quality-label=')),'candidate')
 WORK=ROOT/('build/client-smoke-full' if FULL else 'build/client-smoke-unmodded' if NO_HXZ else 'build/client-smoke-minimal')
 if '--without-iris' in sys.argv:WORK=ROOT/'build/client-smoke-no-iris'
 if '--proxy-test' in sys.argv:WORK=ROOT/'build/client-smoke-proxy'
+if QUALITY_VISUAL:WORK=ROOT/('build/quality-rtf-'+RTF+'-'+('baseline' if QUALITY_BASELINE else QUALITY_LABEL))
 ACCURACY=next((x.split('=',1)[1] for x in sys.argv if x.startswith('--accuracy=')),None)
 if ACCURACY:WORK=ROOT/('build/client-accuracy-'+ACCURACY)
 PERSISTENCE=next((x.split('=',1)[1] for x in sys.argv if x.startswith('--persistence=')),None)
@@ -25,11 +32,14 @@ for p in (SOURCE/'mods').glob('*.jar'):
     if FULL or '--xaero' in sys.argv and 'xaero' in name or any(k in name for k in ('sodium-neoforge-','neoterraforged','terrablender','iris-neoforge-')):
         target=mods/p.name
         if not target.exists() or target.stat().st_size!=p.stat().st_size: shutil.copy2(p,target)
-jar=Path(os.environ.get('HXZ_TEST_JAR',str(ROOT/'dist/fantasy-town-voxy-0.0.1-neoforge-mc1.21.1.jar')))
+jar=artifact()
 for old in [p for p in mods.glob('*.jar') if p.name.startswith(('voxy-hxz-','fantasy-town-voxy-'))]:
     assert (ROOT/'build').resolve() in old.resolve().parents
     if old.name!=jar.name:old.unlink()
-if not NO_HXZ: shutil.copy2(jar,mods/jar.name)
+if QUALITY_BASELINE:
+    for old in mods.glob('fantasy-town-voxy-*.jar'):old.unlink()
+    baseline=Path(setting('HXZ_NEOVOXY'));shutil.copy2(baseline,mods/baseline.name)
+elif not NO_HXZ: shutil.copy2(jar,mods/jar.name)
 config=WORK/'config'; config.mkdir(exist_ok=True)
 if not FULL and not NO_HXZ:
     fixture_config=json.loads((ROOT/'src/main/resources/hxz-defaults/vss-client-config.json').read_text())
@@ -45,15 +55,21 @@ if not FULL and not NO_HXZ:
 if FULL:
     for name in ('config','defaultconfigs','kubejs'):
         if (SOURCE/name).exists(): shutil.copytree(SOURCE/name,WORK/name,dirs_exist_ok=True)
+if QUALITY_VISUAL:
+    (config/'voxy-config.json').write_text(json.dumps({'enabled':True,'ingest_enabled':True,'section_render_distance':4,'service_threads':2,'render_vanilla_fog':False}),encoding='utf-8')
+    (config/'voxy-hxz-neovoxy.json').write_text(json.dumps({'originalRendering':True,'performanceScheduling':False}),encoding='utf-8')
+    (config/'vss-client-config.json').write_text(json.dumps({'enablePrediction':QUALITY_PREDICTION,'receiveServerLods':QUALITY_PREDICTION,'predictionDistanceBlocks':2048,'predictionFineDistanceBlocks':512,'predictionBackgroundWorkers':1,'predictionRefinementWorkers':2,'debugLogging':True}),encoding='utf-8')
+    (config/'iris.properties').write_text('enableShaders=false\n',encoding='utf-8')
 (config/'fml.toml').write_text('earlyWindowControl = false\n',encoding='utf-8')
 (WORK/'options.txt').write_text('lang:zh_cn\nguiScale:2\ntutorialStep:none\nrenderDistance:2\nsimulationDistance:5\nmaxFps:60\nfullscreen:false\npauseOnLostFocus:false\nonboardAccessibility:false\n',encoding='utf-8')
 java=Path(java_home())/'bin'
-cp=str(jar)+os.pathsep+(ROOT/'build/compile-classpath.txt').read_text()
+cp=str(ROOT/'build/classes')+os.pathsep+str(jar)+os.pathsep+(ROOT/'build/compile-classpath.txt').read_text(encoding='utf-8')
 probe=ROOT/'build/client-probe'; probe.mkdir(parents=True,exist_ok=True)
+for old_class in probe.rglob('*.class'):old_class.unlink()
 subprocess.run([str(java/'javac.exe'),'-J-Duser.language=en','-J-Dfile.encoding=UTF-8','-encoding','UTF-8','-proc:none','--release','21','-cp',cp,'-d',str(probe),*map(str,(ROOT/'tests/client').glob('*.java'))],check=True)
 with zipfile.ZipFile(mods/'hxz-smoke-probe.jar','w',zipfile.ZIP_DEFLATED) as z:
     z.writestr('META-INF/neoforge.mods.toml','modLoader="javafml"\nloaderVersion="[4,)"\nlicense="MIT"\n[[mods]]\nmodId="hxz_smoke_probe"\nversion="1"\ndisplayName="HXZ local test probe"\n[[mixins]]\nconfig="hxz-smoke.mixins.json"\n')
-    z.writestr('hxz-smoke.mixins.json',json.dumps({'required':True,'package':'hxz.smoke.mixin','compatibilityLevel':'JAVA_21','client':['HiddenWindowMixin']+([] if NO_HXZ else ['ReceivedTerrainMixin'])}))
+    z.writestr('hxz-smoke.mixins.json',json.dumps({'required':True,'package':'hxz.smoke.mixin','compatibilityLevel':'JAVA_21','client':['HiddenWindowMixin']+([] if NO_HXZ or QUALITY_BASELINE else ['ReceivedTerrainMixin'])}))
     for p in probe.rglob('*.class'): z.write(p,p.relative_to(probe).as_posix())
 meta=json.loads((SOURCE/(SOURCE.name+'.json')).read_text(encoding='utf-8'))
 def allowed(rules):
@@ -91,7 +107,7 @@ def flatten(items):
         elif allowed(item.get('rules',[])):
             value=item['value']; result.extend(expand(s) for s in (value if isinstance(value,list) else [value]))
     return result
-args=['-Xms512M','-Xmx6144M' if FULL else '-Xmx3072M','-Dfile.encoding=UTF-8','-Dhxz.smoke.dir='+str(WORK)]+flatten(meta['arguments']['jvm'])+[meta['mainClass']]+flatten(meta['arguments']['game'])+['--width','1280','--height','720']
+args=['-Xms512M','-Xmx6144M' if FULL else '-Xmx3072M','-Dfile.encoding=UTF-8','-Dhxz.smoke.dir='+str(WORK),'-Dhxz.smoke.version='+VERSION]+flatten(meta['arguments']['jvm'])+[meta['mainClass']]+flatten(meta['arguments']['game'])+['--width','1280','--height','720']
 if '--connect' in sys.argv:
     target=sys.argv[sys.argv.index('--connect')+1]
     args.insert(0,'-Dhxz.smoke.world=true'); args+=['--quickPlayMultiplayer',target]
@@ -107,10 +123,19 @@ if ACCURACY:
     args.insert(0,'-Dhxz.smoke.accuracy='+ACCURACY);args.insert(0,'-Dhxz.smoke.world=true')
     args+=['--quickPlaySingleplayer','hxz-accuracy-fixture']
 if '--singleplayer' in sys.argv:
-    fixture=WORK/'saves'/'hxz-optimization-fixture'
-    if not fixture.exists():shutil.copytree(ROOT/'build/server-smoke/hxz-smoke-world',fixture)
+    from rtf_fixture import prepare_rtf_world
+    fixture=prepare_rtf_world(WORK/'saves'/'hxz-optimization-rtf',RTF)
     args.insert(0,'-Dhxz.smoke.world=true');args.insert(0,'-Dhxz.smoke.compatibility=true')
-    args+=['--quickPlaySingleplayer','hxz-optimization-fixture']
+    args+=['--quickPlaySingleplayer',fixture.name]
+if QUALITY_VISUAL:
+    from rtf_fixture import prepare_rtf_world
+    fixture=prepare_rtf_world(WORK/'saves'/'hxz-quality-rtf',RTF)
+    args.insert(0,'-Dhxz.smoke.world=true');args.insert(0,'-Dhxz.smoke.qualityVisual=true')
+    if QUALITY_PREDICTION:args.insert(0,'-Dhxz.smoke.qualityPrediction=true')
+    if '--smooth-contract' in sys.argv:args.insert(0,'-Dhxz.smoke.smoothContract=true')
+    scene=next((x.split('=',1)[1] for x in sys.argv if x.startswith('--quality-scene=')),None)
+    if scene is not None:args.insert(0,'-Dhxz.smoke.qualityScene='+str(int(scene)))
+    args+=['--quickPlaySingleplayer',fixture.name]
 # Use a UTF-8 JVM argfile only for ASCII paths; the launcher consumes native Windows encoding.
 def quote(s): return '"'+s.replace('\\','/').replace('"','\\"')+'"'
 (WORK/'launch-args.txt').write_text('\n'.join(quote(s) for s in args),encoding='gbk')
@@ -119,9 +144,11 @@ if result.exists(): result.unlink()
 print('Starting isolated '+('full' if FULL else 'minimal')+' client with '+str(len(list(mods.glob('*.jar'))))+' mod files',flush=True)
 with (WORK/'console.log').open('w',encoding='utf-8') as log:
     process=subprocess.Popen([str(java/'java.exe'),'@launch-args.txt'],cwd=WORK,stdout=log,stderr=subprocess.STDOUT,creationflags=subprocess.CREATE_NO_WINDOW)
-    try: process.wait(timeout=1800 if ACCURACY else 300)
+    try: process.wait(timeout=1800 if ACCURACY else 720 if QUALITY_VISUAL else 300)
     except subprocess.TimeoutExpired: process.terminate(); process.wait(timeout=15)
-if not result.exists() or not result.read_text(encoding='utf-8').startswith('PASS ') or process.returncode!=0:
+log_text=(WORK/'console.log').read_text(encoding='utf-8',errors='replace')
+quality_error=QUALITY_VISUAL and any(message in log_text for message in ('VSS prediction tile build failed','OpenGL Error','Failed to compile shader'))
+if not result.exists() or not result.read_text(encoding='utf-8').startswith('PASS ') or process.returncode!=0 or quality_error:
     lines=(WORK/'console.log').read_text(encoding='utf-8',errors='replace').splitlines()
     errors=[(i,l) for i,l in enumerate(lines) if any(k in l for k in ('/ERROR]','/FATAL]','Caused by:','Crash report saved','Exception in thread'))]
     for i,l in errors[:10]: print('\n'.join(lines[i:i+3])[:1800])

@@ -1,12 +1,12 @@
 """Compile native Mojmap overlays and merge the user's exact NeoVoxy/VSS binaries."""
 from pathlib import Path
 import os,sys,subprocess,zipfile,json,hashlib,re,shutil
-from paths import setting,java_home
+from paths import setting,java_home,VERSION
 sys.stdout.reconfigure(encoding='utf-8',errors='replace')
 R=Path(__file__).resolve().parents[1];P=R.parent
 JAVA=Path(java_home())/'bin'
-VERSION='0.0.1';NAME='fantasy-town-voxy-'+VERSION+'-neoforge-mc1.21.1.jar'
-BUILD='20261014-release1'
+NAME='fantasy-town-voxy-'+VERSION+'-neoforge-mc1.21.1.jar'
+BUILD='20261014-rtf-quality2'
 def sha(p):return hashlib.sha256(p.read_bytes()).hexdigest()
 def read(p):
  with zipfile.ZipFile(p) as z:return {n:z.read(n) for n in z.namelist() if not n.endswith('/')}

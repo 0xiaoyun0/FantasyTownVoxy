@@ -1,3 +1,4 @@
+from paths import artifact, VERSION
 """Generate independent actual terrain and compare unobserved predictions in native NeoForge."""
 from pathlib import Path
 import hashlib,json,shutil,subprocess,sys
@@ -29,7 +30,7 @@ if not (world/'level.dat').exists():
         shutil.copytree(pack,world/'datapacks/hxz-accuracy',dirs_exist_ok=True)
         root['DataPacks']['Enabled'].append(nbt.String('file/hxz-accuracy'))
     data.save(world/'level.dat')
-jar=ROOT/'dist/fantasy-town-voxy-0.0.1-neoforge-mc1.21.1.jar'
+jar=artifact()
 digest=hashlib.sha256(jar.read_bytes()).hexdigest()
 if (work/'accuracy.json').exists():(work/'accuracy.json').unlink()
 result=subprocess.run([sys.executable,'tools/client_smoke.py','--accuracy='+fixture]+(['--legacy-prediction'] if legacy else []),cwd=ROOT)

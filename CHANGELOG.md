@@ -1,3 +1,21 @@
+# 0.0.2 — RTF quality and download fixes
+
+## Fixed
+
+- Mixed-size traffic no longer starves another player's large LOD column: bounded FIFO claims reserve part of newly earned bandwidth while other players and acknowledgements continue using the remainder.
+- NeoVoxy's boundary mask now follows the final add/remove event, clears pending changes on reset and clears its empty depth target. Regression cases failed in both the supplied NeoVoxy and 0.0.1.
+- VSS now recognizes NeoVoxy 0.6.1's normal final-depth shader and its actual opaque-to-translucent callback. Correct depth projection and prediction/water ordering can be disabled from Sodium.
+- Coarse exterior prediction connects height samples into slopes instead of giant flat columns. A single captured cave no longer forces an entire exterior preview back to columns. Fine blocks, complex features and volume topology retain the VSS mesher.
+- Prediction meshes use a new cache namespace when smooth previews are enabled; real saved LOD is unchanged.
+
+## Validation and scope
+
+Native world fixtures use actual NeoTerraForged default/custom terrain. New tests cover competing bandwidth claims, boundary lifecycle, actual OpenGL depth composition and the real packed prediction mesher. RTF visual fixtures compare the supplied NeoVoxy, 0.0.1 and this build. Detailed results and unresolved visual limits are in VALIDATION.md and RENDER_QUALITY.zh-CN.md.
+
+The reported white ring has not been reproduced reliably in the stationary RTF comparison. Fixes address verified boundary/depth faults; this release does not claim all seams, arbitrary presets or vegetation match perfectly. Existing user options remain respected.
+
+---
+
 # 0.0.1 — public test release
 
 Continues the earlier local 0.2 integration under the requested new version numbering.

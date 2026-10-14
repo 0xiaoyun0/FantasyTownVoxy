@@ -88,7 +88,7 @@ public final class HxzOptions {
     }
     private static void addMaintenance(ConfigBuilder b,ModOptionsBuilder mod){
         var page=b.createOptionPage().setName(text("状态与热更新"));var group=b.createOptionGroup();
-        button(b,group,"client_status","查看客户端运行状态","查看当前渲染状态与最近一次设置应用结果。",screen->SodiumPrompt.show(screen,"Fantasy Town Voxy 0.0.1",HxzClient.status()+"\n"+LiveClientConfig.message));
+        button(b,group,"client_status","查看客户端运行状态","查看当前渲染状态与最近一次设置应用结果。",screen->SodiumPrompt.show(screen,"Fantasy Town Voxy",HxzClient.status()+"\n"+LiveClientConfig.message));
         button(b,group,"client_reload","从文件热重载客户端配置","普通设置使用钠的“应用”即可。此操作用于读取外部修改的配置，格式错误时保留原配置。",SodiumPanel::reloadClient);
         button(b,group,"server_resync","重新同步服务器 LOD","接收远景已开启但未更新时使用。仍受服务器的请求限额约束。",screen->{
             dev.xantha.vss.networking.client.VSSClientNetworking.forceLodResync("Fantasy Town Voxy panel");

@@ -1,10 +1,10 @@
-# Fantasy Town Voxy 0.0.1（公开测试版） · NeoForge 1.21.1
+# Fantasy Town Voxy 0.0.2（公开测试版） · NeoForge 1.21.1
 
 基于你提供的 NeoVoxy 0.6.1 和 VSS 0.3.5，合并为一个 JAR。客户端和服务器使用同一文件，服务器安装可选。本版修复 `Too many replacement sections: 65`，提供旧 LOD 导入、钠内统一中文面板、远程管理员设置和配置热更新。0.0.1 修复重进后 LOD 目录漂移，增加 Xaero 后端存储隔离、每日下载时段和双重带宽限制；详见 `CHANGELOG.md`。
 
 ## 安装与升级
 
-使用 `fantasy-town-voxy-0.0.1-neoforge-mc1.21.1.jar`，替换旧 Voxy / NeoVoxy / VOXY-HXZ，并移除单独的 VSS，避免重复安装。
+使用 `fantasy-town-voxy-0.0.2-neoforge-mc1.21.1.jar`，替换旧 Voxy / NeoVoxy / VOXY-HXZ，并移除单独的 VSS，避免重复安装。
 
 - 客户端：Minecraft 1.21.1、Java 21、NeoForge、Sodium 0.8.12 或兼容版本。
 - 服务器：无需 Sodium、Iris、Fabric 或 Connector。更新服务器 JAR 后，服务端崩溃修复才生效。
@@ -151,4 +151,4 @@ RTF 自定义预设、噪声和生成器依赖继续经 VSS 快照同步。实�
 
 ## 0.0.1 预测稳定性
 
-钠“地形预测”页新增默认开启、可分别关闭的稳定预测、网格逐点采样、冰山/恶地补全。低模与精修共用地形和水面采样，RTF 初始化补齐噪声设置注册表；模式变化时分离预测缓存。实际 FULL 区块对照方法、六组数据和剩余误差见 [PREDICTION_ACCURACY.zh-CN.md](PREDICTION_ACCURACY.zh-CN.md)。
+钠“地形预测”页新增默认开启、可分别关闭的稳定预测、网格逐点采样、冰山/恶地补全。低模与精修共用地形和水面采样，RTF 初始化补齐噪声设置注册表；模式变化时分离预测缓存。实际 RTF FULL 区块对照方法、四组数据和剩余误差见 [PREDICTION_ACCURACY.zh-CN.md](PREDICTION_ACCURACY.zh-CN.md)。

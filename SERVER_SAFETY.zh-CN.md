@@ -1,4 +1,4 @@
-# 服务端防护 · Fantasy Town Voxy 0.0.1
+# 服务端防护 · Fantasy Town Voxy 0.0.2
 
 ## 下载时段和带宽
 

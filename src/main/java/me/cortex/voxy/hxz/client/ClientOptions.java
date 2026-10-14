@@ -13,7 +13,7 @@ public final class ClientOptions {
         var defaults=new HxzSettings();
         for(var o:HxzSettings.OPTIONS){
             String page=Set.of("worldIsolation","receiveServerLod","existingTerrainFix").contains(o.key())?"服务器共享":
-                Set.of("sessionGuards","sableCompatibility","xaeroMapIsolation").contains(o.key())?"数据与兼容":Set.of("predictionCacheIsolation","stablePrediction","predictionStrictSampling","predictionSurfaceFeatures").contains(o.key())?"地形预测":
+                Set.of("sessionGuards","sableCompatibility","xaeroMapIsolation").contains(o.key())?"数据与兼容":Set.of("predictionCacheIsolation","stablePrediction","predictionStrictSampling","predictionSurfaceFeatures","predictionDepthCompatibility","smoothPredictionPreview").contains(o.key())?"地形预测":
                 o.key().equals("originalRendering")?"基本显示":Set.of("frustumCulling","occlusionCulling","backgroundDetail","backgroundRequestsPerSecond","coarseScreenPercent","limitCoarseMeshes","cameraPlaneFix","safeMeshGuards").contains(o.key())?"HXZ 画面优化":"性能与加载";
             String help=o.help().replace("重新进世界完全生效。","应用时自动重建远景。")
                 .replace("重新进世界生效。","应用后自动更新远景。")

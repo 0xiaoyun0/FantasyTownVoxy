@@ -40,8 +40,18 @@ python tools/server_smoke.py --client --downloads --xaero
 python tools/proxy_transfer_test.py
 ```
 
-The proxy fixture additionally needs `build/proxy-download/velocity.jar` (tested with Velocity 3.4.0-SNAPSHOT build 563), NeoVelocity 1.2.6 in the source server's mods folder, both Xaero mods in the source client, and an already created `build/server-smoke/hxz-smoke-world`. It duplicates that world to guarantee the same biome seed on both backends, gives each a different node identity, and switches A → B → A through one actual proxy. All generated forwarding secrets and logs stay under ignored `build`.
+The proxy fixture additionally needs `build/proxy-download/velocity.jar` (tested with Velocity 3.4.0-SNAPSHOT build 563), NeoVelocity 1.2.6 in the source server's mods folder, both Xaero mods in the source client, and an already generated `build/client-accuracy-rtf-default/saves/hxz-accuracy-fixture`. It duplicates that actual RTF world to guarantee the same biome seed on both backends, gives each a different node identity, and switches A → B → A through one actual proxy. All generated forwarding secrets and logs stay under ignored `build`.
 
-`tools/package_release.py` requires matching artifact hashes in the native, full-pack, Velocity and prediction validation records. Native Minecraft tests require a working local graphics session; they are not headless mocks. The GPU regression harness also requires Python `glfw`, `PyOpenGL` and `numpy` and an OpenGL 4.6 implementation.
+`tools/package_release.py` requires matching artifact hashes in the native, full-pack, Velocity, prediction and quality validation records. Native Minecraft tests require a working local graphics session; they are not headless mocks. The GPU regression harness also requires Python `glfw`, `PyOpenGL` and `numpy` and an OpenGL 4.6 implementation.
 
-Prediction accuracy fixtures additionally use Python `nbtlib` and the installed NeoTerraForged 0.0.6. Run `python tools/prediction_accuracy.py export` once to export the actual default and sea-level +9 presets through the mod's own data generator, then run `vanilla`, `rtf-default` and `rtf-custom`. Repeat each with `--seed=42`. `--legacy` disables the three new accuracy policies and is expected to fail the accuracy threshold; it checks the actual original preview path, not a fabricated sampler. Run `python tools/prediction_report.py` after the six current-mode tests and two legacy regressions. All records must match the release JAR before packaging.
+Prediction accuracy fixtures additionally use Python `nbtlib` and NeoTerraForged 0.0.6. Export the actual default and sea-level +9 presets through the mod's own data generator with `python tools/prediction_accuracy.py export`. Run `rtf-default` and `rtf-custom`, then each with `--seed=42`. `rtf-custom --legacy` is an expected accuracy failure exercising the original fast preview. Run `python tools/prediction_report.py` after those four measurements and the control. All records must match the release JAR.
+
+All native world tests in the 0.0.2 matrix use RTF. `rtf_fixture.py` verifies the noise generator and enabled RTF data pack before launch. Standalone GPU tests use geometry fixtures, without a Minecraft world. The source libraries, reference binaries and shader/physics fixtures remain unchanged.
+
+```powershell
+python tools/client_smoke.py --quality-visual --rtf=default --quality-label=release002
+python tools/client_smoke.py --quality-visual --quality-prediction --rtf=custom --quality-label=bridge002 --quality-scene=1 --smooth-contract
+python tools/quality_report.py
+```
+
+Quality reporting also requires the preserved supplied-NeoVoxy and 0.0.1 comparison captures. It verifies exact JAR hashes, native meshing/bridge execution and screenshot sky-colour diagnostics; visual limits are documented separately from sampler accuracy.

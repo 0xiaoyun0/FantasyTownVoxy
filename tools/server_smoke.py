@@ -1,3 +1,4 @@
+from paths import artifact, VERSION
 from paths import java_home,setting
 """Launch only the integrated mod in a private loopback-only test server."""
 from pathlib import Path
@@ -7,24 +8,30 @@ ROOT=Path(__file__).resolve().parents[1]
 SERVER=Path(setting('HXZ_NEOFORGE_SERVER'))
 CLIENT='--client' in sys.argv
 PLAIN='--plain' in sys.argv
-WORK=ROOT/('build/server-smoke-plain' if PLAIN else 'build/server-smoke')
+RTF=next((x.split('=',1)[1] for x in sys.argv if x.startswith('--rtf=')),'default')
+WORK=ROOT/('build/server-smoke-rtf-'+RTF+('-plain' if PLAIN else ''))
 WORK.mkdir(parents=True,exist_ok=True)
 assert (ROOT/'build').resolve() in WORK.resolve().parents
 assert 'eula=true' in (SERVER/'eula.txt').read_text(), 'Existing installation must have accepted the Minecraft EULA'
 shutil.copy2(SERVER/'eula.txt',WORK/'eula.txt')
 mods=WORK/'mods'; mods.mkdir(exist_ok=True)
-jar=Path(os.environ.get('HXZ_TEST_JAR',str(ROOT/'dist/fantasy-town-voxy-0.0.1-neoforge-mc1.21.1.jar')))
+jar=artifact()
 for old in [p for p in mods.glob('*.jar') if p.name.startswith(('voxy-hxz-','fantasy-town-voxy-'))]:
     assert (ROOT/'build').resolve() in old.resolve().parents
     if old.name!=jar.name:old.unlink()
 probe_jar=mods/'hxz-safety-probe.jar'
 if probe_jar.exists():probe_jar.unlink()
 if not PLAIN: shutil.copy2(jar,mods/jar.name)
-assert len(list(mods.glob('*.jar')))==(0 if PLAIN else 1), 'Unexpected mods in smoke environment'
+terrain_mods=[p for p in (Path(setting('HXZ_CLIENT'))/'mods').glob('*.jar') if any(k in p.name.lower() for k in ('neoterraforged','terrablender'))]
+assert len(terrain_mods)==2, 'Native RTF and TerraBlender are required for every server fixture'
+for mod in terrain_mods:shutil.copy2(mod,mods/mod.name)
+assert len(list(mods.glob('*.jar')))==(2 if PLAIN else 3), 'Unexpected mods in smoke environment'
+from rtf_fixture import prepare_rtf_world
+prepare_rtf_world(WORK/'hxz-smoke-world',RTF)
 if '--flood' in sys.argv or '--features' in sys.argv:
     probe=ROOT/'build/server-probe';probe.mkdir(exist_ok=True)
     for p in probe.rglob('*.class'):p.unlink()
-    cp=str(jar)+os.pathsep+(ROOT/'build/compile-classpath.txt').read_text()
+    cp=str(jar)+os.pathsep+(ROOT/'build/compile-classpath.txt').read_text(encoding='utf-8')
     subprocess.run([str(Path(java_home())/'bin/javac.exe'),'-encoding','UTF-8','-proc:none','-cp',cp,'-d',str(probe),*map(str,(ROOT/'tests/server/probe').glob('*.java'))],check=True)
     with zipfile.ZipFile(probe_jar,'w',zipfile.ZIP_DEFLATED) as z:
         z.writestr('META-INF/neoforge.mods.toml','modLoader="javafml"\nloaderVersion="[4,)"\nlicense="MIT"\n[[mods]]\nmodId="hxz_safety_probe"\nversion="1"\n[[mods]]\nmodId="hxz_feature_probe"\nversion="1"\n[[mixins]]\nconfig="hxz-safety-probe.mixins.json"\n')
@@ -46,14 +53,14 @@ args=args.replace('libraries/',(SERVER/'libraries').as_posix()+'/').replace('-Dl
 (WORK/'launch-args.txt').write_text(args,encoding='gbk' if os.name=='nt' else 'utf-8')
 with socket.socket() as reservation:
     reservation.bind(('127.0.0.1',0)); port=reservation.getsockname()[1]
-(WORK/'server.properties').write_text(f'server-ip=127.0.0.1\nserver-port={port}\nonline-mode=false\nlevel-name=hxz-smoke-world\nlevel-type=minecraft:flat\ngenerator-settings={{"layers":[{{"block":"minecraft:bedrock","height":1}},{{"block":"minecraft:stone","height":2}},{{"block":"minecraft:grass_block","height":1}}],"biome":"minecraft:plains"}}\ngenerate-structures=false\nspawn-protection=0\nview-distance=2\nsimulation-distance=2\nsync-chunk-writes=false\nenable-query=false\nenable-rcon=false\n',encoding='ascii')
+(WORK/'server.properties').write_text(f'server-ip=127.0.0.1\nserver-port={port}\nonline-mode=false\nlevel-name=hxz-smoke-world\nlevel-type=minecraft:normal\ngenerate-structures=false\nspawn-protection=0\nview-distance=2\nsimulation-distance=2\nsync-chunk-writes=false\nenable-query=false\nenable-rcon=false\n',encoding='ascii')
 java=Path(java_home())/'bin/java.exe'
 done=False
 client_ok=not CLIENT
 lines=[]
 client_worker=None
 with (WORK/'console.log').open('w',encoding='utf-8') as log:
-    process=subprocess.Popen([str(java),'-Xms256M','-Xmx1536M','-Dfile.encoding=UTF-8','@launch-args.txt','nogui'],cwd=WORK,stdin=subprocess.PIPE,stdout=subprocess.PIPE,stderr=subprocess.STDOUT,text=True,encoding='utf-8',errors='replace')
+    process=subprocess.Popen([str(java),'-Xms256M','-Xmx3072M','-Dfile.encoding=UTF-8','@launch-args.txt','nogui'],cwd=WORK,stdin=subprocess.PIPE,stdout=subprocess.PIPE,stderr=subprocess.STDOUT,text=True,encoding='utf-8',errors='replace')
     def consume():
         global done, client_ok, client_worker
         for line in process.stdout:

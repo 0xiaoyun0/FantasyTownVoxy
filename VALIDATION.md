@@ -1,10 +1,20 @@
 # Final validation · 2026-10-14
 
-Artifact: **Fantasy Town Voxy 0.0.1**, Minecraft 1.21.1 / native NeoForge, build `20261014-release1`.
+Artifact: **Fantasy Town Voxy 0.0.2**, Minecraft 1.21.1 / native NeoForge, build `20261014-rtf-quality2`.
 
-SHA256: `85281019547d84f85aebcbe482377ba83381109842990ca77619e125b091657a`.
+SHA256: `9a6ebba18c34b522b0e66b632ea724b9b80f6a15a2b47578f2bc4e3bfbfd5190`.
 
-The release packaging gate requires this exact hash in `FINAL-PASS.json`, `FULLPACK-PASS.json`, `VELOCITY-PASS.json` and `PREDICTION-PASS.json`. The distributed `validation-summary.json` combines those records. Fixture classes, source worlds, account data and raw production logs are excluded from the release.
+The release packaging gate requires this exact hash in `FINAL-PASS.json`, `FULLPACK-PASS.json`, `VELOCITY-PASS.json`, `PREDICTION-PASS.json` and `QUALITY-PASS.json`. The distributed `validation-summary.json` combines those records. Fixture classes, source worlds, account data and raw production logs are excluded from the release.
+
+## 0.0.2 regressions and RTF-only world fixtures
+
+All nine client/server scenarios, the installed-modpack integrated world, proxy backends and new accuracy/visual fixtures use real NeoTerraForged default/custom worlds. The world preparation gate rejects a flat generator or a missing/disabled RTF data pack. GPU unit fixtures are geometry tests, not Minecraft worlds.
+
+- Continuous small packets previously starved a second player's 128 KiB column at a 64 KiB/s global limit. The fixed one-minute test sends 10 large columns while small traffic continues; three large claimants all progress and abandoned claims expire. Total earned bandwidth is still enforced.
+- Five boundary lifecycle cases verify last-event state and reset behavior. Both supplied NeoVoxy and 0.0.1 fail the remove/add and reset regressions. Native RTF tests exercise renderer reconstruction without the prior `Chunk not in map` warnings.
+- The actual NeoVoxy final-depth shader compiles on the GPU and passes four projection/occlusion controls. The RTF runtime probe confirms the previously mismatched water callback actually renders predictions.
+- The native packed prediction mesher verifies four corner heights, shared edges, no giant vertical walls, a captured cave, unchanged fine blocks, opt-out and liquid elevation.
+- Fixed forest/mountain screenshots compare NeoVoxy, 0.0.1 and 0.0.2. Sky-colour and bright-neutral pixel diagnostics show no added gaps in those views. This is a screenshot diagnostic, not a depth or universal image-accuracy measurement. The reported white ring remains unconfirmed in these stationary fixtures; see [rendering scope and captures](RENDER_QUALITY.zh-CN.md).
 
 ## LOD persistence
 
@@ -14,7 +24,7 @@ The native test starts two separate client JVMs against the same private endpoin
 
 ## Xaero and actual proxy transfer
 
-The fixture uses Velocity 3.4.0-SNAPSHOT build 563, NeoVelocity 1.2.6, Xaero World Map 1.40.16 and Xaero Minimap 25.3.13. Both backend worlds are copied from the same saved fixture, so their biome seed is identical. The proxy address remains unchanged while the client switches **alpha → beta → alpha**.
+The fixture uses Velocity 3.4.0-SNAPSHOT build 563, NeoVelocity 1.2.6, Xaero World Map 1.40.16 and Xaero Minimap 25.3.13. Both backend worlds are copied from the same actual RTF saved fixture, so their biome seed is identical. The proxy address remains unchanged while the client switches **alpha → beta → alpha**.
 
 Assertions verify that both real Xaero sessions select the expected root before map I/O, B uses a different map and LOD database, B does not read A's saved map configuration, and returning to A reads its original configuration. Minimap/waypoint and world-map roots agree. The prior VSS-to-Xaero late-producer race guard is separately exercised in the installed modpack.
 
@@ -35,12 +45,12 @@ All 14 pages use native Sodium controls. Other checks cover command/mod-list ent
 - Stalled executor, continuation and factory-failure tests; 64000 concurrent queue offers with global/per-player bounds and fair draining. A native client submits 16384 requests; actual column dispatch remains bounded, slow ticks suspend admission, and an injected ordinary failure can be reset without stopping the server.
 - Real OpenGL 4.6 traversal on an RTX 3050 Laptop GPU: original and HXZ paths, standard/reverse-depth shader compilation, coarse/invalid mesh guards, hidden preparation and concurrent request limits. Controller tests cover warmup, 30/60/120 FPS target recovery, pressure and elapsed-time budgets.
 - RTF adapter and worldgen snapshot codec retain upstream bytecode. Native NeoTerraForged custom-preset round trip preserves a changed sea level and the full encoded preset; altered preset/registry/backend inputs select different prediction caches.
-- Installed modpack fixture exercises Sable plot rejection, Xaero late writes, RTF caches and native Sodium in an integrated world. This is short-duration compatibility coverage, not every aircraft, structure, shader or world-generation combination.
+- Installed modpack fixture exercises Sable plot rejection, Xaero late writes, RTF caches and native Sodium in an actual RTF integrated world. This is short-duration compatibility coverage, not every aircraft, structure, shader or world-generation combination.
 - ZIP integrity, one `voxy` mod entrypoint, required mixin class/resource presence, no test classes in the JAR, matching source resource bytes and optional client/server installation combinations are checked.
 
 ## Prediction stability and terrain accuracy
 
-See [the measured report](PREDICTION_ACCURACY.zh-CN.md). Six native fixtures compare predictions to independently generated FULL chunks using two seeds and vanilla/default-RTF/custom-RTF generation. Preview and refinement, plus land/water/high-ground categories, each have a 90% minimum threshold; the report states height tolerances and remaining errors. The actual native batch preview path and Java/RTF preview path are exercised. Legacy-mode runs intentionally fail the threshold. A second-seed frozen-ocean fixture previously scored 88.44% before the missing Java surface extensions were repaired. Packaging requires the exact-artifact prediction record.
+See [the measured report](PREDICTION_ACCURACY.zh-CN.md). Four native fixtures compare predictions to independently generated FULL chunks using two seeds and actual default/custom RTF generation. Preview and refinement, plus land/water/high-ground categories, each have a 90% minimum threshold; the report states height tolerances and remaining errors. The actual Java/RTF preview path is exercised. The RTF legacy-mode control intentionally fails the threshold. A second-seed frozen-ocean fixture previously scored 88.44% before the missing Java surface extensions were repaired. Packaging requires the exact-artifact prediction record.
 
 ## Reproduction
 
@@ -51,7 +61,7 @@ python tools/fullpack_validation.py
 python tools/proxy_transfer_test.py
 ```
 
-Next complete the six prediction fixtures and two expected-failure legacy controls described in [the accuracy report](PREDICTION_ACCURACY.zh-CN.md#复现), then run `python tools/prediction_report.py` and `python tools/package_release.py`. Packaging fails if any of the four validation records is absent or belongs to a different JAR.
+Next complete the four RTF prediction fixtures and the expected-failure RTF legacy control described in [the accuracy report](PREDICTION_ACCURACY.zh-CN.md#复现), then run `python tools/prediction_report.py`, the RTF quality scenarios in BUILDING.md, `python tools/quality_report.py` and `python tools/package_release.py`. Packaging fails if any of the five validation records is absent or belongs to a different JAR.
 
 The native matrix has nine scenarios: feature/UI/import tests, request flood with aggressive existing configuration, administrator sharing toggle, plain server with original rendering, client without this mod, sharing disabled without Iris, plain two-JVM persistence with Xaero, shared two-JVM persistence with Xaero, and live download policy with Xaero. See `BUILDING.md` for local prerequisites.
 

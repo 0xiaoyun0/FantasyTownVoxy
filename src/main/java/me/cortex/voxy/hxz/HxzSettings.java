@@ -18,6 +18,8 @@ public final class HxzSettings {
         new Option("stablePrediction","稳定地形预测","低模与精修使用相同的地表和水面采样；RTF 预览保留地形滤波。初次生成较慢，仍受后台预算限制。关闭恢复 VSS 快速预览。",0,1,true),
         new Option("predictionStrictSampling","预测网格逐点采样","逐点计算远景网格，避免插值漏掉山脊与河岸。关闭后允许 VSS 自适应插值以加快生成。",0,1,true),
         new Option("predictionSurfaceFeatures","补全冰山与恶地地形","为 Java / RTF 预测补全原版地表扩展，保留冰山的海面下空隙；不生成真实区块。",0,1,true),
+        new Option("predictionDepthCompatibility","预测地形与水面遮挡修正","协调 NeoVoxy 与预测地形的深度和透明水面顺序，防止远处水面覆盖近处预测山体。不使用光影时生效，可随时关闭。",0,1,false),
+        new Option("smoothPredictionPreview","粗预测使用连续山坡","将较粗的高度采样点连接成低模山坡，避免出现巨型平顶方块；精细地形保留方块外观。关闭恢复 VSS 柱状低模。重新生成预测网格后生效。",0,1,true),
         new Option("sableCompatibility","航空学存储区保护","检测 Sable 船体存储区，避免把子空间方块记录为静态地形；不增加物理模拟距离。",0,1,true),
         new Option("adaptiveDistance","动态视距","依据实际帧耗时、堆内存和工作积压调节。目标帧率不是性能保证。",0,1,false),
         new Option("progressiveLoading","渐进加载","进入世界后由近到远缓慢扩展；可独立关闭。",0,1,false),
@@ -53,7 +55,8 @@ public final class HxzSettings {
         limitWorkers=true,limitMemory=true,worldIsolation=true,receiveServerLod=true,existingTerrainFix=true;
     public boolean performanceScheduling=true,sharedPredictionBudget=true,sessionGuards=true,
         predictionCacheIsolation=true,sableCompatibility=true,xaeroMapIsolation=true;
-    public boolean stablePrediction=true,predictionStrictSampling=true,predictionSurfaceFeatures=true;
+    public boolean stablePrediction=true,predictionStrictSampling=true,predictionSurfaceFeatures=true,predictionDepthCompatibility=true;
+    public boolean smoothPredictionPreview=true;
     public int minimumFps=30,warmupSeconds=5,growthBlocksPerSecond=128,backgroundDetail=1,
         backgroundRequestsPerSecond=4,coarseScreenPercent=4,backgroundThreads=2,sectionCacheMiB=64,geometryMiB=512;
     public String backendOverride="";
@@ -81,7 +84,7 @@ public final class HxzSettings {
         HxzSettings defaults=new HxzSettings();
         defaults.originalRendering=false;
         // Connection choices are not changed by a rendering preset.
-        for(var o:OPTIONS)if(!Set.of("worldIsolation","receiveServerLod","existingTerrainFix","sessionGuards","predictionCacheIsolation","stablePrediction","predictionStrictSampling","predictionSurfaceFeatures","sableCompatibility","xaeroMapIsolation").contains(o.key()))set(o.key(),defaults.get(o.key()));
+        for(var o:OPTIONS)if(!Set.of("worldIsolation","receiveServerLod","existingTerrainFix","sessionGuards","predictionCacheIsolation","stablePrediction","predictionStrictSampling","predictionSurfaceFeatures","predictionDepthCompatibility","smoothPredictionPreview","sableCompatibility","xaeroMapIsolation").contains(o.key()))set(o.key(),defaults.get(o.key()));
         if(name.equals("smooth")) {backgroundDetail=2;backgroundRequestsPerSecond=8;}
     }
     /** Performance presets preserve the chosen renderer and world/connection preferences. */

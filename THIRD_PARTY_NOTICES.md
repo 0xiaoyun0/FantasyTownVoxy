@@ -9,7 +9,7 @@ The NeoVoxy metadata declares All Rights Reserved and credits Cortex. Its origin
 
 VSS sources used for adaptation are the previously retrieved `wish131400-voxy-server-side-neoforge-1c9fd92` source tree. Its MIT license, including copyright notices, is bundled as `licenses/VSS-MIT.txt`. Integration does not change the original components' licenses.
 
-The Fantasy Town Voxy 0.0.1 overlays also use decompiled classes from the exact supplied binaries. `build-manifest.json` lists compiled overlays and explicit bytecode adaptations for resource caps, tall-column serialization and client integration. Legacy import reads the supplied Voxy/NeoVoxy SaveLoadSystem3 v0 record layout and uses current mapper/update APIs to rebuild data. The original RTF adapter and worldgen snapshot codec bytecode remain unchanged.
+The Fantasy Town Voxy overlays also use decompiled classes from the exact supplied binaries. `build-manifest.json` lists compiled overlays and explicit bytecode adaptations for resource caps, tall-column serialization and client integration. Legacy import reads the supplied Voxy/NeoVoxy SaveLoadSystem3 v0 record layout and uses current mapper/update APIs to rebuild data. The original RTF adapter and worldgen snapshot codec bytecode remain unchanged.
 
 Sodium, Iris, NeoForge, Minecraft and RTF are external runtime components. They are not merged into this mod. Test fixture classes are not included in the release JAR.
 

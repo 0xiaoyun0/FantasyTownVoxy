@@ -1,12 +1,12 @@
-# Fantasy Town Voxy 0.0.1
+# Fantasy Town Voxy 0.0.2
 
 Minecraft **1.21.1 / NeoForge / Java 21** 的远景整合模组，将所提供的 NeoVoxy 0.6.1 与 VSS 0.3.5 合并为同一个 JAR。客户端可独立使用，服务端安装可选；共享服务器已经生成的地形需要两端安装。
 
-本次公开测试版按项目要求重新编号为 **0.0.1**，接续之前的 0.2 本地测试版本。运行时直接使用 NeoForge，不需要 Fabric 或 Connector。构建通过 Java 源码覆盖与 ASM 修改指定上游字节码，详见 [构建说明](BUILDING.md) 和 [组件来源](THIRD_PARTY_NOTICES.md)。
+**0.0.2** 在 0.0.1 的基础上修复共享下载公平性、区块交界遮罩和粗预测地形。运行时直接使用 NeoForge，不需要 Fabric 或 Connector。构建通过 Java 源码覆盖与 ASM 修改指定上游字节码，详见 [构建说明](BUILDING.md) 和 [组件来源](THIRD_PARTY_NOTICES.md)。
 
 ## 下载与安装
 
-从 [Releases](https://github.com/0xiaoyun0/FantasyTownVoxy/releases) 下载 `fantasy-town-voxy-0.0.1-neoforge-mc1.21.1.jar`，放入 `mods`，替换旧 Voxy / NeoVoxy / VOXY-HXZ，并移除独立 VSS。不要重复安装。
+从 [Releases](https://github.com/0xiaoyun0/FantasyTownVoxy/releases) 下载 `fantasy-town-voxy-0.0.2-neoforge-mc1.21.1.jar`，放入 `mods`，替换旧 Voxy / NeoVoxy / VOXY-HXZ，并移除独立 VSS。不要重复安装。
 
 - 客户端需要 **Sodium 0.8.12**；已在 NeoForge 21.1.250 上测试。
 - 服务端不需要 Sodium 或 Iris；已在 NeoForge 21.1.236 上测试。
@@ -14,6 +14,9 @@ Minecraft **1.21.1 / NeoForge / Java 21** 的远景整合模组，将所提供�
 - 新配置默认 **NeoVoxy 原版画面 + 渐进性能调度**；HXZ 画面优化可选，各项策略可单独开关。
 
 ## 本版重点
+
+- **共享下载公平性**：持续的小包发送不再让其他玩家的大块 LOD 一直等待，仍遵守全服和个人限速。
+- **交界与预测画面**：修正快速卸载/加载后的区块遮罩状态；粗预测可用连续低模山坡，新增无光影深度/水面适配开关。[实景记录与限制](RENDER_QUALITY.zh-CN.md)。
 
 - **重进后读回已保存 LOD**：无服务端身份时使用稳定地址作用域，消除每次连接随机生成目录导致的“数据丢失”。
 - **Velocity 跨服 Xaero 隔离**：小地图、世界地图及路标按后端身份保存；同入口同种子的 A → B → A 会复用 A 的目录。

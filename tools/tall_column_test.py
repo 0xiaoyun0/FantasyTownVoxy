@@ -5,7 +5,7 @@ sys.stdout.reconfigure(encoding='utf8',errors='replace')
 R=Path(__file__).resolve().parents[1]
 java=Path(java_home())/'bin'
 out=R/'build/tall-column-test';out.mkdir(exist_ok=True)
-cp=(R/'build/compile-classpath.txt').read_text()
+cp=(R/'build/compile-classpath.txt').read_text(encoding='utf-8')
 if '--baseline' not in sys.argv:cp=str(R/'build/adapted')+os.pathsep+str(R/'build/classes')+os.pathsep+cp
 def run(tool,args):
  f=out/(tool+'.args');f.write_text('\n'.join('"'+s.replace('\\','/')+'"' for s in args),encoding='utf8' if tool=='javac' else 'gbk')

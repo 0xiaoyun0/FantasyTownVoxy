@@ -11,6 +11,8 @@ import dev.xantha.vss.config.VSSClientConfig;
 public final class PredictionCacheIdentity {
     private PredictionCacheIdentity(){}
     public static Path directory(Path original,ClientTerrainSampler sampler){
+        // Geometry changes need a separate mesh store even when preset isolation is disabled.
+        if(HxzSettings.CONFIG.smoothPredictionPreview)original=original.resolve("hxz-sloped-mesh-v2");
         if(!HxzSettings.CONFIG.predictionCacheIsolation)return original;
         var p=sampler.profile();
         String metadata="hxz-prediction-v3\n"+HxzSettings.CONFIG.stablePrediction+"\n"+HxzSettings.CONFIG.predictionStrictSampling+"\n"+HxzSettings.CONFIG.predictionSurfaceFeatures+"\n"+p.dimension()+"\n"+p.seed()+"\n"+p.minY()+"\n"+p.height()+"\n"+

@@ -21,6 +21,7 @@
     "HxzStorageMixin",
     "PredictionBudgetMixin",
     "StablePredictionMixin",
+    "PredictionSmoothPreviewMixin",
     "StableNativePredictionMixin",
     "XaeroScopeMixin",
     "ColumnScopeMixin"

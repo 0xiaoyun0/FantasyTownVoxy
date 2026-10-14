@@ -26,7 +26,7 @@ public final class HxzFeatureProbe {
         switch(phase){
             case 0->{
                 var info=net.neoforged.fml.ModList.get().getModContainerById("voxy").orElseThrow().getModInfo();
-                if(!info.getDisplayName().equals("Fantasy Town Voxy")||!info.getVersion().toString().equals("0.0.1"))throw new AssertionError("Release identity mismatch");
+                if(!info.getDisplayName().equals("Fantasy Town Voxy")||!info.getVersion().toString().equals(System.getProperty("hxz.smoke.version")))throw new AssertionError("Release identity mismatch");
                 if(!new HxzSettings().originalRendering)throw new AssertionError("Default is not NeoVoxy");
                 tallClient();
                 OptimizationProbe.run();
