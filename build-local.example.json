@@ -1,0 +1,10 @@
+{
+  "JAVA_HOME": "C:/tools/jdk-21",
+  "HXZ_NEOVOXY": "reference/neovoxy-original.jar",
+  "HXZ_VSS": "reference/vss-original.jar",
+  "HXZ_MINECRAFT_JAR": "C:/Games/Minecraft/libraries/net/neoforged/neoforge/21.1.250/neoforge-21.1.250-client.jar",
+  "HXZ_SODIUM_JAR": "C:/Games/Minecraft/versions/Test/mods/sodium-neoforge-0.8.12+mc1.21.1.jar",
+  "HXZ_CLASSPATH_FILE": "C:/build/dependency-classpath.txt",
+  "HXZ_CLIENT": "C:/Games/Minecraft/versions/Test",
+  "HXZ_NEOFORGE_SERVER": "C:/Games/TestServer"
+}

@@ -1,0 +1,47 @@
+# Building and testing
+
+This repository contains the maintained Java/resource overlays, bytecode adaptations and regression fixtures. It is a binary-overlay integration of the exact supplied NeoVoxy and VSS inputs, not a complete upstream source checkout. Third-party binaries, Minecraft libraries, worlds, credentials and private logs are not committed.
+
+## Inputs
+
+Use Python 3.9+ and JDK 21. The native client/server fixture scripts have been tested on Windows. Copy `build-local.example.json` to ignored `build-local.json` and replace its example paths. Environment variables with the same keys override that file.
+
+| Key | Required input |
+|---|---|
+| `JAVA_HOME` | JDK 21 installation |
+| `HXZ_NEOVOXY` | Exact `neovoxy-0.6.1-offline.jar`; default `reference/neovoxy-original.jar` |
+| `HXZ_VSS` | Exact `vss-0.3.5-neoforge-1.21.1.jar`; default `reference/vss-original.jar` |
+| `HXZ_MINECRAFT_JAR` | Installed NeoForge 21.1.250 merged client JAR with Mojmap names |
+| `HXZ_SODIUM_JAR` | Sodium NeoForge 0.8.12 for Minecraft 1.21.1 |
+| `HXZ_CLASSPATH_FILE` | UTF-8 file containing the dependency classpath, separated by the OS path separator |
+| `HXZ_CLIENT` | Installed launcher's version directory, for native client tests |
+| `HXZ_NEOFORGE_SERVER` | Installed NeoForge 1.21.1 server, for libraries and an already accepted EULA |
+
+The two upstream SHA256 values are enforced by `tools/build.py` and documented in `THIRD_PARTY_NOTICES.md`. The dependency classpath must provide NeoForge/FML, Minecraft dependencies, ASM, Mixin/MixinExtras and the upstream external libraries. It can be exported from an existing development setup; it is intentionally not a committed machine-specific path list. This release does not include an automatic Gradle dependency bootstrap.
+
+```powershell
+python tools/build.py
+python tools/core_tests.py
+python tools/persistence_test.py
+python tools/validate_release.py
+python tools/fullpack_validation.py
+```
+
+The build compiles the Java overlays, merges the two inputs, applies `tools/Adapt.java`, retains third-party notices, and writes a deterministic ZIP plus `build-manifest.json` and `SHA256SUMS.txt` to `dist`. Minecraft, NeoForge, Sodium, Iris and RTF are not bundled. The original RTF adapter and worldgen snapshot codec are checked byte-for-byte in release validation.
+
+## Native fixtures
+
+Fixtures run in `build` on loopback addresses using synthetic players. They copy installed libraries/mods as required, never connect to a public server, and do not launch the source server or write its world. The full-pack fixture copies the installed modpack's configuration into an isolated game directory.
+
+```powershell
+python tools/server_smoke.py --client --plain --persistence --xaero
+python tools/server_smoke.py --client --persistence --xaero
+python tools/server_smoke.py --client --downloads --xaero
+python tools/proxy_transfer_test.py
+```
+
+The proxy fixture additionally needs `build/proxy-download/velocity.jar` (tested with Velocity 3.4.0-SNAPSHOT build 563), NeoVelocity 1.2.6 in the source server's mods folder, both Xaero mods in the source client, and an already created `build/server-smoke/hxz-smoke-world`. It duplicates that world to guarantee the same biome seed on both backends, gives each a different node identity, and switches A → B → A through one actual proxy. All generated forwarding secrets and logs stay under ignored `build`.
+
+`tools/package_release.py` requires matching artifact hashes in the native, full-pack, Velocity and prediction validation records. Native Minecraft tests require a working local graphics session; they are not headless mocks. The GPU regression harness also requires Python `glfw`, `PyOpenGL` and `numpy` and an OpenGL 4.6 implementation.
+
+Prediction accuracy fixtures additionally use Python `nbtlib` and the installed NeoTerraForged 0.0.6. Run `python tools/prediction_accuracy.py export` once to export the actual default and sea-level +9 presets through the mod's own data generator, then run `vanilla`, `rtf-default` and `rtf-custom`. Repeat each with `--seed=42`. `--legacy` disables the three new accuracy policies and is expected to fail the accuracy threshold; it checks the actual original preview path, not a fabricated sampler. Run `python tools/prediction_report.py` after the six current-mode tests and two legacy regressions. All records must match the release JAR before packaging.

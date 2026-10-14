@@ -1,0 +1,197 @@
+package dev.xantha.vss.networking;
+
+import dev.xantha.vss.common.VSSConstants;
+import dev.xantha.vss.common.VSSLogger;
+import dev.xantha.vss.networking.payloads.BandwidthUpdateC2SPayload;
+import dev.xantha.vss.networking.payloads.BatchChunkRequestC2SPayload;
+import dev.xantha.vss.networking.payloads.BatchResponseS2CPayload;
+import dev.xantha.vss.networking.payloads.CancelRequestC2SPayload;
+import dev.xantha.vss.networking.payloads.DirtyColumnsS2CPayload;
+import dev.xantha.vss.networking.payloads.FarPlayersS2CPayload;
+import dev.xantha.vss.networking.payloads.HandshakeC2SPayload;
+import dev.xantha.vss.networking.payloads.HandshakeRequestS2CPayload;
+import dev.xantha.vss.networking.payloads.RegionPresenceC2SPayload;
+import dev.xantha.vss.networking.payloads.ServerIdentityS2CPayload;
+import dev.xantha.vss.networking.payloads.SessionConfigS2CPayload;
+import dev.xantha.vss.networking.payloads.VoxelColumnS2CPayload;
+import dev.xantha.vss.networking.payloads.WorldgenProfileS2CPayload;
+import dev.xantha.vss.networking.payloads.WorldgenProfileFragmentS2CPayload;
+import dev.xantha.vss.networking.payloads.LostCityHintsC2SPayload;
+import dev.xantha.vss.networking.payloads.LostCityHintsS2CPayload;
+import dev.xantha.vss.networking.server.VSSServerNetworking;
+import dev.xantha.vss.compat.BandwidthOptimizerCompat;
+import io.netty.channel.Channel;
+import dev.xantha.vss.networking.server.ServerIdentityConfigurationTask;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
+import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
+import net.minecraft.server.level.ServerPlayer;
+import net.neoforged.fml.loading.FMLEnvironment;
+import net.neoforged.neoforge.network.PacketDistributor;
+import net.neoforged.neoforge.network.event.RegisterPayloadHandlersEvent;
+import net.neoforged.neoforge.network.event.RegisterConfigurationTasksEvent;
+import net.neoforged.neoforge.network.handling.IPayloadContext;
+import net.neoforged.neoforge.network.registration.HandlerThread;
+import net.neoforged.neoforge.network.registration.PayloadRegistrar;
+
+public final class VSSNetworking {
+    private static final String PROTOCOL = Integer.toString(VSSConstants.PROTOCOL_VERSION);
+    private static final String CLIENT_PACKET_HANDLERS_CLASS = "dev.xantha.vss.networking.client.VSSClientPacketHandlers";
+
+    private VSSNetworking() {
+    }
+
+    public static void register(RegisterPayloadHandlersEvent event) {
+        PayloadRegistrar registrar = event.registrar(PROTOCOL).optional().executesOn(HandlerThread.MAIN);
+
+        registrar.configurationToClient(
+                ServerIdentityS2CPayload.TYPE,
+                ServerIdentityS2CPayload.STREAM_CODEC,
+                VSSNetworking::handleServerIdentity);
+
+        // Admit before NeoForge can enqueue work on Minecraft's unbounded main-thread mailbox.
+        PayloadRegistrar ingress=registrar.executesOn(HandlerThread.NETWORK);
+        ingress.playToServer(HandshakeC2SPayload.TYPE, HandshakeC2SPayload.STREAM_CODEC, me.cortex.voxy.hxz.server.ServerIngress::receive);
+        ingress.playToServer(BatchChunkRequestC2SPayload.TYPE, BatchChunkRequestC2SPayload.STREAM_CODEC, me.cortex.voxy.hxz.server.ServerIngress::receive);
+        ingress.playToServer(CancelRequestC2SPayload.TYPE, CancelRequestC2SPayload.STREAM_CODEC, me.cortex.voxy.hxz.server.ServerIngress::receive);
+        ingress.playToServer(BandwidthUpdateC2SPayload.TYPE, BandwidthUpdateC2SPayload.STREAM_CODEC, me.cortex.voxy.hxz.server.ServerIngress::receive);
+        ingress.playToServer(RegionPresenceC2SPayload.TYPE, RegionPresenceC2SPayload.STREAM_CODEC, me.cortex.voxy.hxz.server.ServerIngress::receive);
+        ingress.playToServer(LostCityHintsC2SPayload.TYPE, LostCityHintsC2SPayload.STREAM_CODEC, me.cortex.voxy.hxz.server.ServerIngress::receive);
+
+        registrar.playToClient(SessionConfigS2CPayload.TYPE, SessionConfigS2CPayload.STREAM_CODEC, VSSNetworking::handleSessionConfig);
+        registrar.playToClient(BatchResponseS2CPayload.TYPE, BatchResponseS2CPayload.STREAM_CODEC, VSSNetworking::handleBatchResponse);
+        registrar.playToClient(DirtyColumnsS2CPayload.TYPE, DirtyColumnsS2CPayload.STREAM_CODEC, VSSNetworking::handleDirtyColumns);
+        registrar.playToClient(VoxelColumnS2CPayload.TYPE, VoxelColumnS2CPayload.STREAM_CODEC, VSSNetworking::handleVoxelColumn);
+        registrar.playToClient(FarPlayersS2CPayload.TYPE, FarPlayersS2CPayload.STREAM_CODEC, VSSNetworking::handleFarPlayers);
+        registrar.playToClient(HandshakeRequestS2CPayload.TYPE, HandshakeRequestS2CPayload.STREAM_CODEC, VSSNetworking::handleHandshakeRequest);
+        registrar.playToClient(WorldgenProfileS2CPayload.TYPE, WorldgenProfileS2CPayload.STREAM_CODEC, VSSNetworking::handleWorldgenProfile);
+        registrar.playToClient(WorldgenProfileFragmentS2CPayload.TYPE, WorldgenProfileFragmentS2CPayload.STREAM_CODEC,
+                VSSNetworking::handleWorldgenFragment);
+        registrar.playToClient(LostCityHintsS2CPayload.TYPE, LostCityHintsS2CPayload.STREAM_CODEC,
+                VSSNetworking::handleLostCityHints);
+    }
+
+    public static void registerConfigurationTasks(RegisterConfigurationTasksEvent event) {
+        me.cortex.voxy.hxz.platform.HxzNetworking.registerConfigurationTasks(event);
+    }
+
+    public static void sendToServer(CustomPacketPayload payload) {
+        me.cortex.voxy.hxz.client.HxzClientNetwork.sendIfSupported(payload);
+    }
+
+    public static void sendToPlayer(ServerPlayer player, CustomPacketPayload payload) {
+        if (!net.neoforged.neoforge.network.registration.NetworkRegistry.hasChannel(
+                (net.neoforged.neoforge.common.extensions.ICommonPacketListener)(Object)player.connection, payload.type().id())) return;
+        if (trySendToIntegratedHost(player, payload)) {
+            return;
+        }
+        if (payload instanceof WorldgenProfileS2CPayload profile) {
+            WorldgenProfileTransfer.send(profile, part -> PacketDistributor.sendToPlayer(player, part));
+        } else {
+            PacketDistributor.sendToPlayer(player, payload);
+        }
+    }
+
+    public static boolean canSendQueuedToPlayer(ServerPlayer player) {
+        Channel channel = player.connection.getConnection().channel();
+        return channel != null && channel.isActive() && channel.isWritable()
+                && !BandwidthOptimizerCompat.isWaitingForClient(channel);
+    }
+
+    public static void sendQueuedToPlayer(ServerPlayer player, CustomPacketPayload payload, Runnable encoded) {
+        try {
+            sendToPlayer(player, payload);
+            // Connection schedules encoding on this event loop. Release our
+            // reservation only after that work, without changing BO's batching.
+            player.connection.getConnection().channel().eventLoop().execute(encoded);
+        } catch (RuntimeException | Error e) {
+            encoded.run();
+            throw e;
+        }
+    }
+
+    private static boolean trySendToIntegratedHost(ServerPlayer player, CustomPacketPayload payload) {
+        if (!FMLEnvironment.dist.isClient()) {
+            return false;
+        }
+        Object handled = invokeClientHandler(
+                "tryHandleIntegratedHostPayload",
+                new Class<?>[] {ServerPlayer.class, CustomPacketPayload.class},
+                player,
+                payload);
+        return Boolean.TRUE.equals(handled);
+    }
+
+    private static void handleSessionConfig(SessionConfigS2CPayload payload, IPayloadContext context) {
+        if(!me.cortex.voxy.hxz.client.HxzClientNetwork.isCurrent(context,false))return;
+        invokeClientHandler("handleSessionConfig", new Class<?>[] {SessionConfigS2CPayload.class}, payload);
+    }
+
+    private static void handleBatchResponse(BatchResponseS2CPayload payload, IPayloadContext context) {
+        if(!me.cortex.voxy.hxz.client.HxzClientNetwork.isCurrent(context,false))return;
+        invokeClientHandler("handleBatchResponse", new Class<?>[] {BatchResponseS2CPayload.class}, payload);
+    }
+
+    private static void handleDirtyColumns(DirtyColumnsS2CPayload payload, IPayloadContext context) {
+        if(!me.cortex.voxy.hxz.client.HxzClientNetwork.isCurrent(context,false))return;
+        invokeClientHandler("handleDirtyColumns", new Class<?>[] {DirtyColumnsS2CPayload.class}, payload);
+    }
+
+    private static void handleVoxelColumn(VoxelColumnS2CPayload payload, IPayloadContext context) {
+        if(!me.cortex.voxy.hxz.client.HxzClientNetwork.isCurrent(context,false))return;
+        invokeClientHandler("handleVoxelColumn", new Class<?>[] {VoxelColumnS2CPayload.class}, payload);
+    }
+
+    private static void handleFarPlayers(FarPlayersS2CPayload payload, IPayloadContext context) {
+        if(!me.cortex.voxy.hxz.client.HxzClientNetwork.isCurrent(context,false))return;
+        invokeClientHandler("handleFarPlayers", new Class<?>[] {FarPlayersS2CPayload.class}, payload);
+    }
+
+    private static void handleHandshakeRequest(HandshakeRequestS2CPayload payload, IPayloadContext context) {
+        if(!me.cortex.voxy.hxz.client.HxzClientNetwork.isCurrent(context,false))return;
+        invokeClientHandler("handleHandshakeRequest", new Class<?>[] {HandshakeRequestS2CPayload.class}, payload);
+    }
+
+    private static void handleWorldgenProfile(WorldgenProfileS2CPayload payload, IPayloadContext context) {
+        if(!me.cortex.voxy.hxz.client.HxzClientNetwork.isCurrent(context,false))return;
+        invokeClientHandler("handleWorldgenProfile", new Class<?>[] {WorldgenProfileS2CPayload.class}, payload);
+    }
+
+    private static void handleWorldgenFragment(WorldgenProfileFragmentS2CPayload payload, IPayloadContext context) {
+        if(!me.cortex.voxy.hxz.client.HxzClientNetwork.isCurrent(context,false))return;
+        invokeClientHandler("handleWorldgenFragment", new Class<?>[] {WorldgenProfileFragmentS2CPayload.class}, payload);
+    }
+
+    private static void handleLostCityHints(LostCityHintsS2CPayload payload, IPayloadContext context) {
+        if(!me.cortex.voxy.hxz.client.HxzClientNetwork.isCurrent(context,false))return;
+        invokeClientHandler("handleLostCityHints", new Class<?>[] {LostCityHintsS2CPayload.class}, payload);
+    }
+
+    private static void handleServerIdentity(ServerIdentityS2CPayload payload, IPayloadContext context) {
+        if(!me.cortex.voxy.hxz.client.HxzClientNetwork.isCurrent(context,true))return;
+        invokeClientHandler("handleServerIdentity", new Class<?>[] {ServerIdentityS2CPayload.class}, payload);
+    }
+
+    private static Object invokeClientHandler(String methodName, Class<?>[] parameterTypes, Object... args) {
+        if (!FMLEnvironment.dist.isClient()) {
+            return null;
+        }
+        try {
+            Class<?> handlersClass = Class.forName(CLIENT_PACKET_HANDLERS_CLASS);
+            Method method = handlersClass.getMethod(methodName, parameterTypes);
+            return method.invoke(null, args);
+        } catch (InvocationTargetException e) {
+            Throwable cause = e.getCause();
+            if (cause instanceof RuntimeException runtimeException) {
+                throw runtimeException;
+            }
+            if (cause instanceof Error error) {
+                throw error;
+            }
+            throw new IllegalStateException("VSS client packet handler failed: " + methodName, cause);
+        } catch (ReflectiveOperationException e) {
+            VSSLogger.error("Unable to invoke VSS client packet handler: " + methodName, e);
+            return null;
+        }
+    }
+}

@@ -1,0 +1,3 @@
+# Retain the exact upstream resource bytes used in the binary-overlay build.
+# Java/Python accept the checked-in line endings on supported build hosts.
+* -text

@@ -1,0 +1,31 @@
+{
+  "required": true,
+  "package": "me.cortex.voxy.hxz.mixin",
+  "compatibilityLevel": "JAVA_21",
+  "mixins": ["SableIngestMixin", "DownloadSenderMixin"],
+  "client": [
+    "ConfigurationSessionMixin",
+    "XaeroLoginScopeMixin",
+    "XaeroWorldMapStorageMixin",
+    "XaeroMinimapStorageMixin",
+    "VssOptionalServerMixin",
+    "VssIdentityMixin",
+    "VssPredictionRenderMixin",
+    "VssPredictionStateMixin",
+    "VssPredictionLayoutMixin",
+    "VssNetworkRangeMixin",
+    "VssExistingTerrainMixin",
+    "HxzRenderMixin",
+    "HxzTraversalMixin",
+    "HxzWorkersMixin",
+    "HxzStorageMixin",
+    "PredictionBudgetMixin",
+    "StablePredictionMixin",
+    "StableNativePredictionMixin",
+    "XaeroScopeMixin",
+    "ColumnScopeMixin"
+  ],
+  "injectors": {
+    "defaultRequire": 1
+  }
+}
