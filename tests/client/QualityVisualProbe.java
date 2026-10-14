@@ -20,14 +20,18 @@ public final class QualityVisualProbe {
         var target=mc.getMainRenderTarget();
         String status=name+", vanilla="+mc.options.renderDistance().get()+", position="+mc.player.position()+", width="+target.width+", height="+target.height+"\n";
         if(Boolean.getBoolean("hxz.smoke.qualityPrediction")){
+            String quality=QualityFirstProbe.inspectRuntime();
+            status+=quality+"\n";System.out.println(quality);
             StringBuilder bridge=new StringBuilder("HXZ_NORMAL_BRIDGE ");
             for(String key:new String[]{"failed","reported","completedViewport","completedFramebuffer"}){
                 var f=dev.xantha.vss.client.prediction.PredictionNormalTranslucencyBridge.class.getDeclaredField(key);
                 f.setAccessible(true);bridge.append(key).append('=').append(f.get(null)).append(' ');
             }
             System.out.println(bridge+" enabled="+me.cortex.voxy.hxz.HxzSettings.CONFIG.predictionDepthCompatibility);
-            if(suffix.equals("handoff")&&(!bridge.toString().contains("failed=false reported=true")||bridge.toString().contains("completedViewport=null")))
-                throw new AssertionError("NeoVoxy prediction/water integration did not run: "+bridge);
+            if(bridge.toString().contains("failed=true"))throw new AssertionError("Prediction/water integration failed: "+bridge);
+            if(suffix.equals("handoff")&&!quality.contains("accepted=0 ")
+                    &&(!bridge.toString().contains("failed=false reported=true")||bridge.toString().contains("completedViewport=null")))
+                throw new AssertionError("Detailed prediction/water integration did not run: "+bridge);
             int reported=0;
             for(var tile:dev.xantha.vss.client.prediction.ClientPredictionState.readyTiles(mc.level.dimension())){
                 if(tile.spacingBlocks()<16||reported++>=12)continue;
@@ -47,7 +51,7 @@ public final class QualityVisualProbe {
         var mc=Minecraft.getInstance();ticks++;
         if(failure!=null)throw new AssertionError("RTF scene setup failed",failure);
         if(!contractChecked&&Boolean.getBoolean("hxz.smoke.smoothContract")){
-            SmoothPreviewProbe.verify();contractChecked=true;
+            SmoothPreviewProbe.verify();QualityFirstProbe.verify();contractChecked=true;
         }
         if(phase==0){
             mc.options.renderDistance().set(8);mc.options.fov().set(70);mc.options.hideGui=true;
@@ -75,11 +79,22 @@ public final class QualityVisualProbe {
         }
         if(phase==2&&ticks>=400){
             if(Boolean.getBoolean("hxz.smoke.qualityPrediction")){
-                var rendered=java.util.regex.Pattern.compile("(?:^|,)rendered=(\\d+)").matcher(dev.xantha.vss.client.prediction.PredictionRenderer.diagnostics());
-                var forward=dev.xantha.vss.client.prediction.ClientPredictionState.coveringTile(mc.level.dimension(),mc.player.getBlockX()>>4,(mc.player.getBlockZ()>>4)+8,5);
-                if(forward==null||!rendered.find()||Long.parseLong(rendered.group(1))==0){
-                    if(ticks>=2400)throw new AssertionError("No visible prediction mesh reached the GPU");
+                if(ticks%400==0){
+                    System.out.println(QualityFirstProbe.inspectRuntime());
+                    System.out.println("HXZ_QUALITY_WAIT "+dev.xantha.vss.client.prediction.ClientPredictionState.diagnostics());
+                }
+                // Empty prediction is intentional while only coarse terrain exists. Require actual
+                // generated terrain so this tests rejection, not a disabled or broken predictor.
+                if(!dev.xantha.vss.client.prediction.ClientPredictionState.hasReadyTiles(mc.level.dimension())){
+                    if(ticks>=3600)throw new AssertionError("No actual RTF prediction completed; "+QualityFirstProbe.inspectRuntime());
                     return false;
+                }
+                String quality=QualityFirstProbe.inspectRuntime();
+                if(quality.contains("accepted=0 ")){
+                    var rendered=java.util.regex.Pattern.compile("(?:^|,)rendered=(\\d+)").matcher(dev.xantha.vss.client.prediction.PredictionRenderer.diagnostics());
+                    if(!rendered.find()||Long.parseLong(rendered.group(1))!=0)
+                        throw new AssertionError("Hidden coarse terrain was still drawn: "+quality);
+                    System.out.println("HXZ_QUALITY_RUNTIME PASS coarse terrain generated but not drawn; waiting for detail");
                 }
             }
             capture("handoff");

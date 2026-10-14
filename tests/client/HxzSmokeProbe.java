@@ -34,6 +34,10 @@ public final class HxzSmokeProbe {
         if(!ready || mc.getOverlay()!=null) { stable=0; return; }
         if(++stable<100) return;
         try {
+            if(world&&Boolean.getBoolean("hxz.smoke.qualityFirstContract")){
+                QualityFirstProbe.verify();
+                Files.writeString(Path.of(System.getProperty("hxz.smoke.dir"),"result.txt"),"PASS quality-first rendering contract");mc.stop();return;
+            }
             if(world&&Boolean.getBoolean("hxz.smoke.qualityVisual")){
                 if(!QualityVisualProbe.tick())return;
                 Files.writeString(Path.of(System.getProperty("hxz.smoke.dir"),"result.txt"),"PASS captured real vanilla/LOD handoff scene");mc.stop();return;

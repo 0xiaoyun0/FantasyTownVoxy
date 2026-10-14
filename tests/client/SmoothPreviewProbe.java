@@ -24,7 +24,9 @@ public final class SmoothPreviewProbe {
     }
     public static void verify()throws Exception{
         boolean original=HxzSettings.CONFIG.smoothPredictionPreview;
+        boolean quality=HxzSettings.CONFIG.qualityFirstLod;
         try{
+            HxzSettings.CONFIG.qualityFirstLod=false;
             var samples=new ClientColumnSample[9];
             for(int z=0;z<3;z++)for(int x=0;x<3;x++)samples[z*3+x]=sample(60+x*20+z*10,0);
             HxzSettings.CONFIG.smoothPredictionPreview=true;
@@ -52,6 +54,6 @@ public final class SmoothPreviewProbe {
             if(water<0||Math.abs((float)waterY.invoke(wet,water,0)-(64-(1.001F-8.0F/9.0F)))>.0001)
                 throw new AssertionError("Sloped shoreline changed water elevation");
             System.out.println("HXZ_SMOOTH PASS actual mesher: slopes, shared edges, no giant walls, fine blocks, opt-out, water elevation");
-        }finally{HxzSettings.CONFIG.smoothPredictionPreview=original;}
+        }finally{HxzSettings.CONFIG.smoothPredictionPreview=original;HxzSettings.CONFIG.qualityFirstLod=quality;}
     }
 }

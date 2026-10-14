@@ -22,7 +22,7 @@ for path in [jar,R/'dist/build-manifest.json',R/'dist/SHA256SUMS.txt']:
     shutil.copy2(path,release/path.name)
 for name in ['README.md','BUILDING.md','QUICKSTART.zh-CN.md','README_HXZ.zh-CN.md','SETTINGS.zh-CN.md','SERVER_SAFETY.zh-CN.md','THIRD_PARTY_NOTICES.md','VALIDATION.md','PREDICTION_ACCURACY.zh-CN.md','RENDER_QUALITY.zh-CN.md','CHANGELOG.md','RELEASE_NOTES.zh-CN.md']:
     shutil.copy2(R/name,release/name)
-shutil.copytree(R/'docs/quality-0.0.2',release/'docs/quality-0.0.2',dirs_exist_ok=True)
+shutil.copytree(R/('docs/quality-'+VERSION),release/('docs/quality-'+VERSION),dirs_exist_ok=True)
 for path in (R/'build/client-smoke-minimal/screenshots').glob('fantasy-town-voxy-*.png'):
     shutil.copy2(path,release/path.name)
 shutil.copy2(R/'build/validation/fantasy-town-voxy-performance.png',release/'fantasy-town-voxy-performance.png')

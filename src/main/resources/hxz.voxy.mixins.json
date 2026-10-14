@@ -22,6 +22,7 @@
     "PredictionBudgetMixin",
     "StablePredictionMixin",
     "PredictionSmoothPreviewMixin",
+    "PredictionQualitySnapshotMixin",
     "StableNativePredictionMixin",
     "XaeroScopeMixin",
     "ColumnScopeMixin"

@@ -1,10 +1,10 @@
-# Fantasy Town Voxy 0.0.2（公开测试版） · NeoForge 1.21.1
+# Fantasy Town Voxy 0.0.3（公开测试版） · NeoForge 1.21.1
 
 基于你提供的 NeoVoxy 0.6.1 和 VSS 0.3.5，合并为一个 JAR。客户端和服务器使用同一文件，服务器安装可选。本版修复 `Too many replacement sections: 65`，提供旧 LOD 导入、钠内统一中文面板、远程管理员设置和配置热更新。0.0.1 修复重进后 LOD 目录漂移，增加 Xaero 后端存储隔离、每日下载时段和双重带宽限制；详见 `CHANGELOG.md`。
 
 ## 安装与升级
 
-使用 `fantasy-town-voxy-0.0.2-neoforge-mc1.21.1.jar`，替换旧 Voxy / NeoVoxy / VOXY-HXZ，并移除单独的 VSS，避免重复安装。
+使用 `fantasy-town-voxy-0.0.3-neoforge-mc1.21.1.jar`，替换旧 Voxy / NeoVoxy / VOXY-HXZ，并移除单独的 VSS，避免重复安装。
 
 - 客户端：Minecraft 1.21.1、Java 21、NeoForge、Sodium 0.8.12 或兼容版本。
 - 服务器：无需 Sodium、Iris、Fabric 或 Connector。更新服务器 JAR 后，服务端崩溃修复才生效。
@@ -53,7 +53,7 @@
 
 balanced 在视野外少量准备粗模型；smooth 按距离准备细节，每秒最多 8 个后台请求，减少转身等待但增加占用。HXZ 通常从约 512 方块开始，缓冲 5 秒后逐步扩展。30 FPS 是调度目标，不能保证其他模组、光影及硬件在任何场景都达到该帧率。
 
-HXZ 默认几何缓冲 512 MiB、空闲区段缓存 64 MiB、专用后台线程最多 2 个，均不是整个游戏的资源上限。允许普通低模回退；过大粗模型被限制而细数据未就绪时，可能短暂留空。原版模式保留 NeoVoxy 自己的回退机制。
+HXZ 默认几何缓冲 512 MiB、空闲区段缓存 64 MiB、专用后台线程最多 2 个，均不是整个游戏的资源上限。真实数据保留 NeoVoxy 正常 LOD 层级，HXZ 可限制投影过大的回退模型。预测默认开启“LOD 画质优先”，仅显示完整 64×64 网格且采样间距不超过 2 格的结果；粗山坡与柱状块不再占位。远处可能等待更久或暂不显示，可在钠“地形预测”页关闭此策略。性能预设保留该选择。
 
 “性能与加载”提供低端、均衡、高端三个可继续编辑的预设，保留画面模式、最大视距和世界身份设置；也可执行 `/voxyhxz performance low`、`balanced` 或 `quality`。稳定限帧恰好等于目标帧率时，控制器会小步尝试扩大视距；负载上升后回退并冷却，避免一直停留在初始范围。
 

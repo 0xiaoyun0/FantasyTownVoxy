@@ -3,7 +3,7 @@ from pathlib import Path
 import json, os
 
 ROOT = Path(__file__).resolve().parents[1]
-VERSION = '0.0.2'
+VERSION = '0.0.3'
 _file = ROOT / 'build-local.json'
 _local = json.loads(_file.read_text(encoding='utf-8')) if _file.exists() else {}
 

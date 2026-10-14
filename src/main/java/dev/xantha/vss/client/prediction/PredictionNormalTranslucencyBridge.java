@@ -36,6 +36,8 @@ public final class PredictionNormalTranslucencyBridge {
                 || PredictionIrisBridge.shadersActive() || mc.level == null
                 || mc.getMainRenderTarget().frameBufferId != framebuffer
                 || Boolean.getBoolean("vss.disableNormalWaterOrdering")) return;
+        var visible=ClientPredictionState.renderSnapshot(mc.level.dimension());
+        if(visible==null||visible.tiles().isEmpty())return;
         try {
             Access access = ACCESS.get(pipeline.getClass());
             if (access == null) {

@@ -57,8 +57,9 @@ if FULL:
         if (SOURCE/name).exists(): shutil.copytree(SOURCE/name,WORK/name,dirs_exist_ok=True)
 if QUALITY_VISUAL:
     (config/'voxy-config.json').write_text(json.dumps({'enabled':True,'ingest_enabled':True,'section_render_distance':4,'service_threads':2,'render_vanilla_fog':False}),encoding='utf-8')
-    (config/'voxy-hxz-neovoxy.json').write_text(json.dumps({'originalRendering':True,'performanceScheduling':False}),encoding='utf-8')
-    (config/'vss-client-config.json').write_text(json.dumps({'enablePrediction':QUALITY_PREDICTION,'receiveServerLods':QUALITY_PREDICTION,'predictionDistanceBlocks':2048,'predictionFineDistanceBlocks':512,'predictionBackgroundWorkers':1,'predictionRefinementWorkers':2,'debugLogging':True}),encoding='utf-8')
+    # An upgrade can retain 0.0.2's smooth-preview preference; the new default must still hide coarse meshes.
+    (config/'voxy-hxz-neovoxy.json').write_text(json.dumps({'originalRendering':True,'performanceScheduling':False,'smoothPredictionPreview':True}),encoding='utf-8')
+    (config/'vss-client-config.json').write_text(json.dumps({'enablePrediction':QUALITY_PREDICTION,'receiveServerLods':QUALITY_PREDICTION,'predictionDistanceBlocks':2048,'predictionFineDistanceBlocks':1024,'predictionBackgroundWorkers':1,'predictionRefinementWorkers':2,'debugLogging':True}),encoding='utf-8')
     (config/'iris.properties').write_text('enableShaders=false\n',encoding='utf-8')
 (config/'fml.toml').write_text('earlyWindowControl = false\n',encoding='utf-8')
 (WORK/'options.txt').write_text('lang:zh_cn\nguiScale:2\ntutorialStep:none\nrenderDistance:2\nsimulationDistance:5\nmaxFps:60\nfullscreen:false\npauseOnLostFocus:false\nonboardAccessibility:false\n',encoding='utf-8')
@@ -127,6 +128,7 @@ if '--singleplayer' in sys.argv:
     fixture=prepare_rtf_world(WORK/'saves'/'hxz-optimization-rtf',RTF)
     args.insert(0,'-Dhxz.smoke.world=true');args.insert(0,'-Dhxz.smoke.compatibility=true')
     args+=['--quickPlaySingleplayer',fixture.name]
+if '--quality-first-contract' in sys.argv:args.insert(0,'-Dhxz.smoke.qualityFirstContract=true')
 if QUALITY_VISUAL:
     from rtf_fixture import prepare_rtf_world
     fixture=prepare_rtf_world(WORK/'saves'/'hxz-quality-rtf',RTF)

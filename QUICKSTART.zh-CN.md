@@ -1,10 +1,10 @@
-# Fantasy Town Voxy 0.0.2
+# Fantasy Town Voxy 0.0.3
 
 公开测试版本，构建 `20261014-rtf-quality2`，Minecraft 1.21.1 / NeoForge / Java 21。已将 NeoVoxy 与 VSS 合并为一个 JAR。
 
 ## 安装
 
-使用 `fantasy-town-voxy-0.0.2-neoforge-mc1.21.1.jar` 替换旧 Voxy、NeoVoxy、VOXY-HXZ，并移除单独的 VSS。不要把新旧版本同时放进 mods。
+使用 `fantasy-town-voxy-0.0.3-neoforge-mc1.21.1.jar` 替换旧 Voxy、NeoVoxy、VOXY-HXZ，并移除单独的 VSS。不要把新旧版本同时放进 mods。
 
 客户端需要 Sodium 0.8.12；RTF / NeoTerraForged 继续独立安装。服务器端可选：不装仍可使用本地远景；共享服务器已生成地形，需要服务器也安装这个 JAR。服务器无需安装 Sodium。
 

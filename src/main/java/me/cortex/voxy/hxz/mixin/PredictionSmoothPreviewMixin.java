@@ -13,7 +13,7 @@ public class PredictionSmoothPreviewMixin {
     private static void hxz$coarseSurface(ClientColumnSample[] samples,int[] colors,int seaLevel,int fluidColor,
             int step,int grid,int[] foliage,int[] water,int baseX,int baseZ,@Coerce Object vegetation,
             @Coerce Object simple,@Coerce Object cities,BooleanSupplier current,CallbackInfoReturnable<PredictionMesh> ci){
-        if(!HxzSettings.CONFIG.smoothPredictionPreview)return;
+        if(HxzSettings.CONFIG.qualityFirstLod||!HxzSettings.CONFIG.smoothPredictionPreview)return;
         var mesh=PredictionSmoothPreview.build(samples,colors,water,fluidColor,step,grid,vegetation,simple,cities,current);
         if(mesh!=null)ci.setReturnValue(mesh);
     }

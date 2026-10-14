@@ -126,7 +126,20 @@ public final class HxzFeatureProbe {
                 if(screen.getPrompt()!=null||!release.isCanceled()||mc.screen!=screen)throw new AssertionError("Escape closed settings instead of only the input modal");
                 System.out.println("HXZ_FEATURE PASS native Sodium import input, text events and precision-input modal");
                 mc.setScreen(null);mc.player.connection.sendCommand("hxzfeature tall");phase++;ticks=0;}
-            case 14->{if(ticks<35)return false;return true;}
+            case 14->{if(ticks<35)return false;
+                var option=(net.caffeinemc.mods.sodium.client.config.structure.BooleanOption)net.caffeinemc.mods.sodium.client.config.ConfigManager.CONFIG.getOption(SodiumPanel.id("hxz_qualityfirstlod"));
+                if(!option.getAppliedValue())throw new AssertionError("Sodium quality-first default missing");
+                option.modifyValue(false);net.caffeinemc.mods.sodium.client.config.ConfigManager.CONFIG.applyAllOptions();phase++;ticks=0;}
+            case 15->{if(ticks<45)return false;
+                if(HxzSettings.CONFIG.qualityFirstLod||!LiveClientConfig.message.equals("已应用并保存。")||VoxyCommon.getInstance()==null)
+                    throw new AssertionError("Quality-first opt-out did not apply live: "+LiveClientConfig.message);
+                var option=(net.caffeinemc.mods.sodium.client.config.structure.BooleanOption)net.caffeinemc.mods.sodium.client.config.ConfigManager.CONFIG.getOption(SodiumPanel.id("hxz_qualityfirstlod"));
+                option.modifyValue(true);net.caffeinemc.mods.sodium.client.config.ConfigManager.CONFIG.applyAllOptions();phase++;ticks=0;}
+            case 16->{if(ticks<45)return false;
+                if(!HxzSettings.CONFIG.qualityFirstLod||!LiveClientConfig.message.equals("已应用并保存。")||VoxyCommon.getInstance()==null)
+                    throw new AssertionError("Quality-first enable did not rebuild live: "+LiveClientConfig.message);
+                QualityFirstProbe.verify();
+                System.out.println("HXZ_QUALITY_FIRST PASS native Sodium Apply off/on with live renderer reconstruction");return true;}
         }
         return false;
     }

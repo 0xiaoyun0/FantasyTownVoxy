@@ -1,3 +1,11 @@
+# 0.0.3 — Prefer detailed LOD
+
+- Enable LOD quality-first by default. Both normal and Iris prediction snapshots reject incomplete grids and sample spacing above two blocks; ownership uses the same filtered map, including disk-restored meshes.
+- Keep real NeoVoxy LOD and the planner's reusable samples. Fine prediction may arrive later; distant regions without eligible predictions wait for real LOD rather than displaying coarse placeholders.
+- Default the smooth coarse-preview compatibility option off. Quality-first takes precedence over an old saved `smoothPredictionPreview=true`; explicit opt-out remains available in Sodium and rendering/performance presets preserve the choice.
+- Avoid an extra prediction/water depth pass when no eligible prediction mesh exists.
+- Verify actual RTF default/custom worlds, native snapshot selection and live Sodium Apply. No superflat world fixture is used.
+
 # 0.0.2 — RTF quality and download fixes
 
 ## Fixed

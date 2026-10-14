@@ -1,20 +1,26 @@
 # Final validation · 2026-10-14
 
-Artifact: **Fantasy Town Voxy 0.0.2**, Minecraft 1.21.1 / native NeoForge, build `20261014-rtf-quality2`.
+Artifact: **Fantasy Town Voxy 0.0.3**, Minecraft 1.21.1 / native NeoForge, build `20261014-quality-first`.
 
-SHA256: `9a6ebba18c34b522b0e66b632ea724b9b80f6a15a2b47578f2bc4e3bfbfd5190`.
+SHA256: `5fa9b6c86a22921a5c936a38d0611fb883c723b061e1684231a3405cb0ab7230`.
 
 The release packaging gate requires this exact hash in `FINAL-PASS.json`, `FULLPACK-PASS.json`, `VELOCITY-PASS.json`, `PREDICTION-PASS.json` and `QUALITY-PASS.json`. The distributed `validation-summary.json` combines those records. Fixture classes, source worlds, account data and raw production logs are excluded from the release.
 
-## 0.0.2 regressions and RTF-only world fixtures
+## Quality-first rendering
+
+The old 0.0.2 artifact fails the actual native snapshot selection contract: it accepts coarse and incomplete cached tiles. The new artifact filters both geometry and ownership before indexing, retains complete 64x64 grids with spacing of 1 or 2 blocks, leaves reusable planner samples intact and supports explicit opt-out. Rendering/performance presets preserve the preference. Sodium's actual Apply action is exercised off/on with renderer reconstruction in an RTF server session.
+
+An actual custom RTF mountain startup produced seven coarse tiles; none were drawn with quality-first enabled, even with the old smooth-preview preference retained. Detailed predictions had not reached the GPU during this short run, so this fixture verifies suppression and continued genuine LOD rendering, not the visual quality of finished prediction. Detailed acceptance is separately checked in the native snapshot contract. This does not force full-resolution prediction across an arbitrary horizon.
+
+## Retained regressions and RTF-only world fixtures
 
 All nine client/server scenarios, the installed-modpack integrated world, proxy backends and new accuracy/visual fixtures use real NeoTerraForged default/custom worlds. The world preparation gate rejects a flat generator or a missing/disabled RTF data pack. GPU unit fixtures are geometry tests, not Minecraft worlds.
 
 - Continuous small packets previously starved a second player's 128 KiB column at a 64 KiB/s global limit. The fixed one-minute test sends 10 large columns while small traffic continues; three large claimants all progress and abandoned claims expire. Total earned bandwidth is still enforced.
 - Five boundary lifecycle cases verify last-event state and reset behavior. Both supplied NeoVoxy and 0.0.1 fail the remove/add and reset regressions. Native RTF tests exercise renderer reconstruction without the prior `Chunk not in map` warnings.
-- The actual NeoVoxy final-depth shader compiles on the GPU and passes four projection/occlusion controls. The RTF runtime probe confirms the previously mismatched water callback actually renders predictions.
-- The native packed prediction mesher verifies four corner heights, shared edges, no giant vertical walls, a captured cave, unchanged fine blocks, opt-out and liquid elevation.
-- Fixed forest/mountain screenshots compare NeoVoxy, 0.0.1 and 0.0.2. Sky-colour and bright-neutral pixel diagnostics show no added gaps in those views. This is a screenshot diagnostic, not a depth or universal image-accuracy measurement. The reported white ring remains unconfirmed in these stationary fixtures; see [rendering scope and captures](RENDER_QUALITY.zh-CN.md).
+- The actual NeoVoxy final-depth shader compiles on the GPU and passes four projection/occlusion controls. The water callback was exercised with prediction in 0.0.2; the quality-first startup fixture now skips this extra pass while only rejected coarse tiles exist.
+- The optional compatibility path (quality-first explicitly disabled in the test) uses the native packed prediction mesher to verify four corner heights, shared edges, no giant vertical walls, a captured cave, unchanged fine blocks, opt-out and liquid elevation.
+- Fixed forest/mountain screenshots compare NeoVoxy, 0.0.1 and 0.0.3. Sky-colour and bright-neutral pixel diagnostics show no added gaps in those views. This is a screenshot diagnostic, not a depth or universal image-accuracy measurement. The reported white ring remains unconfirmed in these stationary fixtures; see [rendering scope and captures](RENDER_QUALITY.zh-CN.md).
 
 ## LOD persistence
 

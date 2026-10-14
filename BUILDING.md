@@ -46,11 +46,12 @@ The proxy fixture additionally needs `build/proxy-download/velocity.jar` (tested
 
 Prediction accuracy fixtures additionally use Python `nbtlib` and NeoTerraForged 0.0.6. Export the actual default and sea-level +9 presets through the mod's own data generator with `python tools/prediction_accuracy.py export`. Run `rtf-default` and `rtf-custom`, then each with `--seed=42`. `rtf-custom --legacy` is an expected accuracy failure exercising the original fast preview. Run `python tools/prediction_report.py` after those four measurements and the control. All records must match the release JAR.
 
-All native world tests in the 0.0.2 matrix use RTF. `rtf_fixture.py` verifies the noise generator and enabled RTF data pack before launch. Standalone GPU tests use geometry fixtures, without a Minecraft world. The source libraries, reference binaries and shader/physics fixtures remain unchanged.
+All native world tests in the 0.0.3 matrix use RTF. `rtf_fixture.py` verifies the noise generator and enabled RTF data pack before launch. Standalone GPU tests use geometry fixtures, without a Minecraft world. The source libraries, reference binaries and shader/physics fixtures remain unchanged.
 
 ```powershell
-python tools/client_smoke.py --quality-visual --rtf=default --quality-label=release002
-python tools/client_smoke.py --quality-visual --quality-prediction --rtf=custom --quality-label=bridge002 --quality-scene=1 --smooth-contract
+python tools/client_smoke.py --singleplayer --rtf=custom --quality-first-contract
+python tools/client_smoke.py --quality-visual --rtf=default --quality-label=release003
+python tools/client_smoke.py --quality-visual --quality-prediction --rtf=custom --quality-label=quality003 --quality-scene=1 --smooth-contract
 python tools/quality_report.py
 ```
 

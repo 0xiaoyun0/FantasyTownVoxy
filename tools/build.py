@@ -6,7 +6,7 @@ sys.stdout.reconfigure(encoding='utf-8',errors='replace')
 R=Path(__file__).resolve().parents[1];P=R.parent
 JAVA=Path(java_home())/'bin'
 NAME='fantasy-town-voxy-'+VERSION+'-neoforge-mc1.21.1.jar'
-BUILD='20261014-rtf-quality2'
+BUILD='20261014-quality-first'
 def sha(p):return hashlib.sha256(p.read_bytes()).hexdigest()
 def read(p):
  with zipfile.ZipFile(p) as z:return {n:z.read(n) for n in z.namelist() if not n.endswith('/')}
