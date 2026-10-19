@@ -23,9 +23,12 @@
     "StablePredictionMixin",
     "PredictionSmoothPreviewMixin",
     "PredictionQualitySnapshotMixin",
+    "PredictionQualityWorkMixin",
+    "PredictionPressureRetirementMixin",
     "StableNativePredictionMixin",
     "XaeroScopeMixin",
-    "ColumnScopeMixin"
+    "ColumnScopeMixin",
+    "ClientLodBackpressureMixin"
   ],
   "injectors": {
     "defaultRequire": 1

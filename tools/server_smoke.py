@@ -1,4 +1,4 @@
-from paths import artifact, VERSION
+from paths import artifact, VERSION, server_arguments
 from paths import java_home,setting
 """Launch only the integrated mod in a private loopback-only test server."""
 from pathlib import Path
@@ -47,8 +47,7 @@ if not PLAIN:
     (config/'voxy-hxz-server.json').write_text('{}',encoding='utf-8')
     if '--downloads' in sys.argv:
         (config/'voxy-hxz-server.json').write_text(json.dumps({'downloadScheduleEnabled':True,'downloadBlockStartHour':0,'downloadBlockEndHour':0}),encoding='utf-8')
-args=next((SERVER/'libraries/net/neoforged/neoforge').glob('*/win_args.txt')).read_text()
-args=args.replace('libraries/',(SERVER/'libraries').as_posix()+'/').replace('-DlibraryDirectory=libraries','-DlibraryDirectory='+(SERVER/'libraries').as_posix())
+args=server_arguments(SERVER)
 # java.exe reads @argfiles using the Windows native code page, before JVM properties.
 (WORK/'launch-args.txt').write_text(args,encoding='gbk' if os.name=='nt' else 'utf-8')
 with socket.socket() as reservation:
@@ -60,7 +59,7 @@ client_ok=not CLIENT
 lines=[]
 client_worker=None
 with (WORK/'console.log').open('w',encoding='utf-8') as log:
-    process=subprocess.Popen([str(java),'-Xms256M','-Xmx3072M','-Dfile.encoding=UTF-8','@launch-args.txt','nogui'],cwd=WORK,stdin=subprocess.PIPE,stdout=subprocess.PIPE,stderr=subprocess.STDOUT,text=True,encoding='utf-8',errors='replace')
+    process=subprocess.Popen([str(java),'-Xms256M','-Xmx3072M','-Dfile.encoding=UTF-8','@launch-args.txt','nogui'],cwd=WORK,stdin=subprocess.PIPE,stdout=subprocess.PIPE,stderr=subprocess.STDOUT,text=True,encoding='utf-8',errors='replace',creationflags=subprocess.CREATE_NO_WINDOW if os.name=='nt' else 0)
     def consume():
         global done, client_ok, client_worker
         for line in process.stdout:

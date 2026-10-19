@@ -1,4 +1,4 @@
-from paths import artifact, VERSION
+from paths import artifact, VERSION, server_arguments
 from paths import java_home,setting
 """Private Velocity + two NeoVelocity backends, using one duplicated fixture world."""
 from pathlib import Path
@@ -42,7 +42,7 @@ try:
         (wd/'config/vss-server-config.json').write_text(json.dumps(c),encoding='utf-8')
         (wd/'config/voxy-hxz-server.json').write_text('{}',encoding='utf-8')
         (wd/'server.properties').write_text(f'server-ip=127.0.0.1\nserver-port={ports[name]}\nonline-mode=false\nlevel-name=world\nview-distance=2\nsimulation-distance=2\nspawn-protection=0\ngenerate-structures=false\n',encoding='ascii')
-        args=next((S/'libraries/net/neoforged/neoforge').glob('*/win_args.txt')).read_text().replace('libraries/',(S/'libraries').as_posix()+'/').replace('-DlibraryDirectory=libraries','-DlibraryDirectory='+(S/'libraries').as_posix())
+        args=server_arguments(S)
         (wd/'launch-args.txt').write_text(args,encoding='gbk')
         launch(name,['-Xms256M','-Xmx3072M','-Dfile.encoding=UTF-8','@launch-args.txt','nogui'],'Done (')
     wd=work/'proxy';wd.mkdir();shutil.copy2(R/'build/proxy-download/velocity.jar',wd/'velocity.jar');(wd/'forwarding.secret').write_text(secret)

@@ -1,12 +1,12 @@
 """Compile native Mojmap overlays and merge the user's exact NeoVoxy/VSS binaries."""
 from pathlib import Path
 import os,sys,subprocess,zipfile,json,hashlib,re,shutil
-from paths import setting,java_home,VERSION
+from paths import setting,java_home,VERSION,NEOFORGE_VERSION
 sys.stdout.reconfigure(encoding='utf-8',errors='replace')
 R=Path(__file__).resolve().parents[1];P=R.parent
 JAVA=Path(java_home())/'bin'
 NAME='fantasy-town-voxy-'+VERSION+'-neoforge-mc1.21.1.jar'
-BUILD='20261014-quality-first'
+BUILD='20261019-detail-throughput'
 def sha(p):return hashlib.sha256(p.read_bytes()).hexdigest()
 def read(p):
  with zipfile.ZipFile(p) as z:return {n:z.read(n) for n in z.namelist() if not n.endswith('/')}
@@ -19,13 +19,27 @@ base=Path(setting('HXZ_NEOVOXY',R/'reference/neovoxy-original.jar'));vss=Path(se
 assert sha(base)=='1ba68d6b19c8020d16f93f2ddfe184f23edb7fc138d692d732ee13ecd1e0071c'
 assert sha(vss)=='6abc84e84cc40030d49f974f3e40055020b5121bcc1a72193cef7a69677a7559'
 mc=Path(setting('HXZ_MINECRAFT_JAR'))
+assert mc.name == 'neoforge-'+NEOFORGE_VERSION+'-client.jar', 'Build baseline must be NeoForge '+NEOFORGE_VERSION
+neo_api=Path(setting('HXZ_NEOFORGE_API',mc.with_name('neoforge-'+NEOFORGE_VERSION+'-universal.jar')))
+mc_base=Path(setting('HXZ_MINECRAFT_BASE',mc.parents[4]/'net/minecraft/client/1.21.1-20240808.144430/client-1.21.1-20240808.144430-srg.jar'))
+fml=Path(setting('HXZ_FML_JAR',mc.parents[4]/'net/neoforged/fancymodloader/loader/4.0.44/loader-4.0.44.jar'))
+assert mc_base.is_file(), 'Provide NeoForge installer Mojmap client-srg.jar for unpatched Minecraft classes'
+assert neo_api.is_file() and neo_api.name=='neoforge-'+NEOFORGE_VERSION+'-universal.jar', 'Provide the matching NeoForge 21.1.250 universal API'
+assert fml.is_file() and fml.name=='loader-4.0.44.jar', 'Provide the NeoForge 21.1.250 FML 4.0.44 API'
 sodium=Path(setting('HXZ_SODIUM_JAR'))
 nested=[]
 with zipfile.ZipFile(sodium) as z:
  for n in z.namelist():
   if n.endswith('.jar'):
    p=R/'build'/Path(n).name;p.write_bytes(z.read(n));nested.append(str(p))
-cp=os.pathsep.join([str(mc),str(sodium),str(base),str(vss)]+nested+[p.strip() for p in Path(setting('HXZ_CLASSPATH_FILE')).read_text(encoding='utf-8').split(os.pathsep) if p.strip() and 'voxy-original' not in p and 'sodium-compile' not in p])
+dependencies=[]
+for value in Path(setting('HXZ_CLASSPATH_FILE')).read_text(encoding='utf-8').split(os.pathsep):
+ p=value.strip()
+ if not p or 'voxy-original' in p or 'sodium-compile' in p:continue
+ name=Path(p).name
+ if re.fullmatch(r'neoforge-[\d.]+-(?:client|universal)\.jar',name) or re.fullmatch(r'loader-[\d.]+\.jar',name) or name.startswith(('fabric-','minecraft-merged-')):continue
+ dependencies.append(p)
+cp=os.pathsep.join(dict.fromkeys([str(mc),str(mc_base),str(neo_api),str(fml),str(sodium),str(base),str(vss)]+nested+dependencies))
 (R/'build/compile-classpath.txt').write_text(cp,encoding='utf-8')
 out=R/'build/classes';out.mkdir(exist_ok=True)
 assert out.resolve().parent==(R/'build').resolve()
@@ -83,7 +97,7 @@ content['licenses/VSS-MIT.txt']=(R/'licenses/VSS-MIT.txt').read_bytes()
 content['licenses/NeoVoxy-original-metadata.toml']=read(base)['META-INF/neoforge.mods.toml']
 content['META-INF/MANIFEST.MF']=f'Manifest-Version: 1.0\r\nImplementation-Title: Fantasy Town Voxy\r\nImplementation-Version: {VERSION}\r\nHXZ-Build: {BUILD}\r\n\r\n'.encode()
 (R/'dist').mkdir(exist_ok=True);target=R/'dist'/NAME;write(target,content)
-manifest={'version':VERSION,'build':BUILD,'baseline':str(base.name),'baselineSha256':sha(base),'vssSha256':sha(vss),'jarSha256':sha(target),'overlayClasses':[p.relative_to(out).as_posix() for p in out.rglob('*.class')],'bytecodeAdaptedClasses':[p.relative_to(adapt).as_posix() for p in adapt.rglob('*.class')]}
+manifest={'version':VERSION,'build':BUILD,'minecraft':'1.21.1','neoforgeBaseline':NEOFORGE_VERSION,'baseline':str(base.name),'baselineSha256':sha(base),'vssSha256':sha(vss),'jarSha256':sha(target),'overlayClasses':[p.relative_to(out).as_posix() for p in out.rglob('*.class')],'bytecodeAdaptedClasses':[p.relative_to(adapt).as_posix() for p in adapt.rglob('*.class')]}
 (R/'dist/build-manifest.json').write_text(json.dumps(manifest,indent=2),encoding='utf-8')
 (R/'dist/SHA256SUMS.txt').write_text(sha(target)+'  '+NAME+'\n')
 print('BUILT '+str(target)+' '+str(target.stat().st_size)+' bytes')

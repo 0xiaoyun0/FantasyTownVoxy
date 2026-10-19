@@ -1,3 +1,24 @@
+# 0.3.0 — Fine-detail scheduling and bounded recovery
+
+Target Minecraft 1.21.1, NeoForge 21.1.250 and Java 21; retain the native Sodium 0.8.12 settings baseline and optional installation of the same JAR on the server.
+
+## Added and fixed
+
+- Add default-on, independently switchable near-detail prediction scheduling. Only selected fine leaves bypass hidden parent/medium dependencies; existing worker, frame, CPU, memory and retry admission remains in force. Disabling scheduling preserves the separate quality filter.
+- Under memory pressure, retire obsolete parentless LOD 0/1 prediction caches outside the existing horizon-plus-retirement-margin, including unfinished 16/32 grids. Preserve desired/in-flight terrain, disk caches and real Voxy LOD; use the existing resource-release and ownership lifecycle.
+- Add default-on client ingest backpressure using the actual Voxy pending-section count plus compressed-column count and bytes. Retain received columns while paused and resume below a lower watermark; the option is exposed in Sodium.
+- Keep matching, fully received queued columns current during long local-processing pauses, avoiding timeout/retry replacement of their request IDs. Unanswered and incomplete transfers still time out; session reset clears the protection.
+- Make session validation, dequeue and column/byte accounting atomic under a short queue lock, and prevent an old drain's completion from clearing the new session's processing marker. Verify same-dimension reconnect and cross-dimension transfer with a deterministic real-processor regression against the rebuilt artifact.
+- Let an asynchronous server NBT read continue under its existing task reservation instead of acquiring the same budget again. Release task and read-gate leases on rejection, shutdown and failure paths.
+
+## Defaults, migration and scope
+
+New configurations still use original NeoVoxy rendering with independent HXZ performance scheduling. The 0.0.3 quality filter remains enabled by default: complete 64×64 predicted grids at no more than two-block spacing; no coarse prediction placeholders. Existing explicit choices and real LOD data are retained.
+
+Retain RTF preset support, optional server sharing, download schedules and per-server/per-player limits, Velocity/Xaero isolation, legacy LOD imports, server guards and hot configuration through Sodium or commands. Replace older combined or standalone Voxy/NeoVoxy and VSS JARs; update the server to obtain server-side fixes.
+
+This entry describes implementation changes, not a final performance or universal compatibility result. Final RTF measurements are in [BENCHMARK.md](docs/optimization-0.3.0/BENCHMARK.md) and validation scope in [VALIDATION.md](VALIDATION.md); no fixed FPS, accuracy percentage or all-seams-resolved claim is made here.
+
 # 0.0.3 — Prefer detailed LOD
 
 - Enable LOD quality-first by default. Both normal and Iris prediction snapshots reject incomplete grids and sample spacing above two blocks; ownership uses the same filtered map, including disk-restored meshes.

@@ -9,9 +9,10 @@ import me.cortex.voxy.hxz.platform.HxzPlatform;
 public final class HxzSettings {
     public record Option(String key,String label,String help,int min,int max,boolean restart) {}
     public static final List<Option> OPTIONS=List.of(
-        new Option("originalRendering","原版 NeoVoxy 渲染","选择 NeoVoxy 画面；性能调度可独立开启。完全恢复原版行为可使用原版预设。",0,1,true),
+        new Option("originalRendering","原版 NeoVoxy 渲染","选择 NeoVoxy 画面；性能调度可独立开启。原版预设恢复原版画面与调度，预测和数据保护选项独立保留。",0,1,true),
         new Option("performanceScheduling","性能调度总开关","两种画面模式均可使用；关闭后绕过渐进加载、动态视距及 HXZ 资源预算。",0,1,true),
         new Option("sharedPredictionBudget","预测跟随负载","本模组帧耗时或内存紧张时暂缓非紧急预测，给当前画面留出资源。",0,1,false),
+        new Option("clientIngestBackpressure","下载跟随本地处理速度","真实 LOD 尚未处理完时暂缓解码和新请求，积压下降后自动恢复。保留排队数据，避免下载过快挤占内存；服务器限速与时段规则仍然生效。关闭恢复原接收节奏。",0,1,false),
         new Option("sessionGuards","转服与地图任务校验","阻止旧连接数据和旧地图后台任务写入当前世界。",0,1,true),
         new Option("xaeroMapIsolation","Xaero 小地图与世界地图隔离","按完整服务器地址（含端口）、后端身份和世界种子隔离地图与路标。重新进服生效；旧地图保留，关闭后可回到旧目录。无身份的同地址同种子后端须填写手动世界标识。",0,1,false),
         new Option("predictionCacheIsolation","按地形预设隔离预测缓存","RTF 预设、生成器或注册表变化后使用独立预测缓存；保留旧文件和真实 LOD。",0,1,true),
@@ -20,6 +21,7 @@ public final class HxzSettings {
         new Option("predictionSurfaceFeatures","补全冰山与恶地地形","为 Java / RTF 预测补全原版地表扩展，保留冰山的海面下空隙；不生成真实区块。",0,1,true),
         new Option("predictionDepthCompatibility","预测地形与水面遮挡修正","协调 NeoVoxy 与预测地形的深度和透明水面顺序，防止远处水面覆盖近处预测山体。不使用光影时生效，可随时关闭。",0,1,false),
         new Option("qualityFirstLod","LOD 画质优先","真实 LOD 正常显示；预测仅显示完整精修网格且采样间距不超过 2 格的地形。粗模不占位；预测可见范围可能小于设定距离，更远处等待真实 LOD。应用后重建远景。",0,1,true),
+        new Option("prioritizeDetailedPrediction","优先完成近处精细预测","开启 LOD 画质优先时，先完成已选中的近处精细网格，再生成隐藏的远处粗网格。保留原有线程与负载上限；关闭后恢复 VSS 的预测生成顺序，画质筛选不变。应用后重建远景。",0,1,true),
         new Option("smoothPredictionPreview","粗预测山坡（兼容选项）","仅在关闭 LOD 画质优先后生效。开启使用连续山坡，关闭保留 VSS 柱状预测；此开关本身不禁止粗模。重新生成预测网格后生效。",0,1,true),
         new Option("sableCompatibility","航空学存储区保护","检测 Sable 船体存储区，避免把子空间方块记录为静态地形；不增加物理模拟距离。",0,1,true),
         new Option("adaptiveDistance","动态视距","依据实际帧耗时、堆内存和工作积压调节。目标帧率不是性能保证。",0,1,false),
@@ -54,10 +56,10 @@ public final class HxzSettings {
         nearFirstLoading=true,limitCoarseMeshes=true,cameraPlaneFix=true,safeMeshGuards=true,
         strictRequestLimit=true,frustumCulling=true,occlusionCulling=true,skipStartupGc=true,
         limitWorkers=true,limitMemory=true,worldIsolation=true,receiveServerLod=true,existingTerrainFix=true;
-    public boolean performanceScheduling=true,sharedPredictionBudget=true,sessionGuards=true,
+    public boolean performanceScheduling=true,sharedPredictionBudget=true,clientIngestBackpressure=true,sessionGuards=true,
         predictionCacheIsolation=true,sableCompatibility=true,xaeroMapIsolation=true;
     public boolean stablePrediction=true,predictionStrictSampling=true,predictionSurfaceFeatures=true,predictionDepthCompatibility=true;
-    public boolean qualityFirstLod=true,smoothPredictionPreview=false;
+    public boolean qualityFirstLod=true,prioritizeDetailedPrediction=true,smoothPredictionPreview=false;
     public int minimumFps=30,warmupSeconds=5,growthBlocksPerSecond=128,backgroundDetail=1,
         backgroundRequestsPerSecond=4,coarseScreenPercent=4,backgroundThreads=2,sectionCacheMiB=64,geometryMiB=512;
     public String backendOverride="";
@@ -85,7 +87,7 @@ public final class HxzSettings {
         HxzSettings defaults=new HxzSettings();
         defaults.originalRendering=false;
         // Connection choices are not changed by a rendering preset.
-        for(var o:OPTIONS)if(!Set.of("worldIsolation","receiveServerLod","existingTerrainFix","sessionGuards","predictionCacheIsolation","stablePrediction","predictionStrictSampling","predictionSurfaceFeatures","predictionDepthCompatibility","qualityFirstLod","smoothPredictionPreview","sableCompatibility","xaeroMapIsolation").contains(o.key()))set(o.key(),defaults.get(o.key()));
+        for(var o:OPTIONS)if(!Set.of("worldIsolation","receiveServerLod","existingTerrainFix","clientIngestBackpressure","sessionGuards","predictionCacheIsolation","stablePrediction","predictionStrictSampling","predictionSurfaceFeatures","predictionDepthCompatibility","qualityFirstLod","prioritizeDetailedPrediction","smoothPredictionPreview","sableCompatibility","xaeroMapIsolation").contains(o.key()))set(o.key(),defaults.get(o.key()));
         if(name.equals("smooth")) {backgroundDetail=2;backgroundRequestsPerSecond=8;}
     }
     /** Performance presets preserve the chosen renderer and world/connection preferences. */

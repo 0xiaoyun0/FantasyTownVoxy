@@ -1,8 +1,8 @@
-from paths import artifact, VERSION
+from paths import artifact, VERSION, NEOFORGE_VERSION
 from paths import java_home,setting
 """Launch an isolated copy using the user's installed client libraries; no account data."""
 from pathlib import Path
-import os, sys, json, re, shutil, subprocess, zipfile
+import os, sys, json, re, shutil, subprocess, zipfile, hashlib
 sys.stdout.reconfigure(encoding='utf-8',errors='replace')
 ROOT=Path(__file__).resolve().parents[1]
 SOURCE=Path(setting('HXZ_CLIENT'))
@@ -12,16 +12,19 @@ NO_HXZ='--without-hxz' in sys.argv
 QUALITY_VISUAL='--quality-visual' in sys.argv
 QUALITY_BASELINE='--quality-baseline' in sys.argv
 QUALITY_PREDICTION='--quality-prediction' in sys.argv
+PREDICTION_PROGRESS='--prediction-progress' in sys.argv
 RTF=next((x.split('=',1)[1] for x in sys.argv if x.startswith('--rtf=')),'default')
 QUALITY_LABEL=next((x.split('=',1)[1] for x in sys.argv if x.startswith('--quality-label=')),'candidate')
 WORK=ROOT/('build/client-smoke-full' if FULL else 'build/client-smoke-unmodded' if NO_HXZ else 'build/client-smoke-minimal')
 if '--without-iris' in sys.argv:WORK=ROOT/'build/client-smoke-no-iris'
 if '--proxy-test' in sys.argv:WORK=ROOT/'build/client-smoke-proxy'
 if QUALITY_VISUAL:WORK=ROOT/('build/quality-rtf-'+RTF+'-'+('baseline' if QUALITY_BASELINE else QUALITY_LABEL))
+if PREDICTION_PROGRESS:WORK=ROOT/('build/progress-rtf-'+RTF+'-'+QUALITY_LABEL)
 ACCURACY=next((x.split('=',1)[1] for x in sys.argv if x.startswith('--accuracy=')),None)
 if ACCURACY:WORK=ROOT/('build/client-accuracy-'+ACCURACY)
 PERSISTENCE=next((x.split('=',1)[1] for x in sys.argv if x.startswith('--persistence=')),None)
 if PERSISTENCE:WORK=ROOT/('build/client-smoke-persistence-'+('shared' if '--expect-sharing' in sys.argv else 'plain'))
+if PREDICTION_PROGRESS:assert not WORK.exists(), 'Cold-cache progress measurement needs a fresh --quality-label'
 WORK.mkdir(parents=True,exist_ok=True)
 assert (ROOT/'build').resolve() in WORK.resolve().parents
 mods=WORK/'mods'; mods.mkdir(exist_ok=True)
@@ -55,11 +58,11 @@ if not FULL and not NO_HXZ:
 if FULL:
     for name in ('config','defaultconfigs','kubejs'):
         if (SOURCE/name).exists(): shutil.copytree(SOURCE/name,WORK/name,dirs_exist_ok=True)
-if QUALITY_VISUAL:
+if QUALITY_VISUAL or PREDICTION_PROGRESS:
     (config/'voxy-config.json').write_text(json.dumps({'enabled':True,'ingest_enabled':True,'section_render_distance':4,'service_threads':2,'render_vanilla_fog':False}),encoding='utf-8')
     # An upgrade can retain 0.0.2's smooth-preview preference; the new default must still hide coarse meshes.
     (config/'voxy-hxz-neovoxy.json').write_text(json.dumps({'originalRendering':True,'performanceScheduling':False,'smoothPredictionPreview':True}),encoding='utf-8')
-    (config/'vss-client-config.json').write_text(json.dumps({'enablePrediction':QUALITY_PREDICTION,'receiveServerLods':QUALITY_PREDICTION,'predictionDistanceBlocks':2048,'predictionFineDistanceBlocks':1024,'predictionBackgroundWorkers':1,'predictionRefinementWorkers':2,'debugLogging':True}),encoding='utf-8')
+    (config/'vss-client-config.json').write_text(json.dumps({'enablePrediction':QUALITY_PREDICTION or PREDICTION_PROGRESS,'receiveServerLods':QUALITY_PREDICTION or PREDICTION_PROGRESS,'predictionDistanceBlocks':2048,'predictionFineDistanceBlocks':1024,'predictionBackgroundWorkers':1,'predictionRefinementWorkers':2,'debugLogging':True}),encoding='utf-8')
     (config/'iris.properties').write_text('enableShaders=false\n',encoding='utf-8')
 (config/'fml.toml').write_text('earlyWindowControl = false\n',encoding='utf-8')
 (WORK/'options.txt').write_text('lang:zh_cn\nguiScale:2\ntutorialStep:none\nrenderDistance:2\nsimulationDistance:5\nmaxFps:60\nfullscreen:false\npauseOnLostFocus:false\nonboardAccessibility:false\n',encoding='utf-8')
@@ -68,11 +71,18 @@ cp=str(ROOT/'build/classes')+os.pathsep+str(jar)+os.pathsep+(ROOT/'build/compile
 probe=ROOT/'build/client-probe'; probe.mkdir(parents=True,exist_ok=True)
 for old_class in probe.rglob('*.class'):old_class.unlink()
 subprocess.run([str(java/'javac.exe'),'-J-Duser.language=en','-J-Dfile.encoding=UTF-8','-encoding','UTF-8','-proc:none','--release','21','-cp',cp,'-d',str(probe),*map(str,(ROOT/'tests/client').glob('*.java'))],check=True)
+pressure_probe=None
+if '--quality-first-contract' in sys.argv:
+    pressure_probe=ROOT/'build/pressure-native-probe';pressure_probe.mkdir(exist_ok=True)
+    subprocess.run([str(java/'javac.exe'),'-J-Duser.language=en','-J-Dfile.encoding=UTF-8','-encoding','UTF-8','-proc:none','--release','21','-cp',cp,'-d',str(pressure_probe),str(ROOT/'tests/prediction/PredictionPressureReclaimTest.java')],check=True)
 with zipfile.ZipFile(mods/'hxz-smoke-probe.jar','w',zipfile.ZIP_DEFLATED) as z:
     z.writestr('META-INF/neoforge.mods.toml','modLoader="javafml"\nloaderVersion="[4,)"\nlicense="MIT"\n[[mods]]\nmodId="hxz_smoke_probe"\nversion="1"\ndisplayName="HXZ local test probe"\n[[mixins]]\nconfig="hxz-smoke.mixins.json"\n')
-    z.writestr('hxz-smoke.mixins.json',json.dumps({'required':True,'package':'hxz.smoke.mixin','compatibilityLevel':'JAVA_21','client':['HiddenWindowMixin']+([] if NO_HXZ or QUALITY_BASELINE else ['ReceivedTerrainMixin'])}))
+    z.writestr('hxz-smoke.mixins.json',json.dumps({'required':True,'package':'hxz.smoke.mixin','compatibilityLevel':'JAVA_21','client':['HiddenWindowMixin']+([] if NO_HXZ or QUALITY_BASELINE else ['ReceivedTerrainMixin'])+(['ExteriorCostTraceMixin'] if '--exterior-audit' in sys.argv else [])}))
     for p in probe.rglob('*.class'): z.write(p,p.relative_to(probe).as_posix())
+    if pressure_probe:z.write(pressure_probe/'dev/xantha/vss/client/prediction/PredictionPressureReclaimTest.class','hxz-test/pressure.bin')
 meta=json.loads((SOURCE/(SOURCE.name+'.json')).read_text(encoding='utf-8'))
+game_args=meta['arguments']['game']
+assert game_args[game_args.index('--fml.neoForgeVersion')+1]==NEOFORGE_VERSION, 'Client fixture must use NeoForge '+NEOFORGE_VERSION
 def allowed(rules):
     result=not rules
     for rule in rules:
@@ -129,6 +139,13 @@ if '--singleplayer' in sys.argv:
     args.insert(0,'-Dhxz.smoke.world=true');args.insert(0,'-Dhxz.smoke.compatibility=true')
     args+=['--quickPlaySingleplayer',fixture.name]
 if '--quality-first-contract' in sys.argv:args.insert(0,'-Dhxz.smoke.qualityFirstContract=true')
+if '--exterior-audit' in sys.argv:args.insert(0,'-Dhxz.smoke.exteriorAudit=true')
+if PREDICTION_PROGRESS:
+    from rtf_fixture import prepare_rtf_world
+    fixture=prepare_rtf_world(WORK/'saves'/'hxz-progress-rtf',RTF)
+    args.insert(0,'-Dhxz.smoke.world=true');args.insert(0,'-Dhxz.smoke.predictionProgress=true')
+    if '--progress-baseline' in sys.argv:args.insert(0,'-Dhxz.smoke.predictionProgressBaseline=true')
+    args+=['--quickPlaySingleplayer',fixture.name]
 if QUALITY_VISUAL:
     from rtf_fixture import prepare_rtf_world
     fixture=prepare_rtf_world(WORK/'saves'/'hxz-quality-rtf',RTF)
@@ -144,12 +161,20 @@ def quote(s): return '"'+s.replace('\\','/').replace('"','\\"')+'"'
 result=WORK/'result.txt'
 if result.exists(): result.unlink()
 print('Starting isolated '+('full' if FULL else 'minimal')+' client with '+str(len(list(mods.glob('*.jar'))))+' mod files',flush=True)
+launch_digest=hashlib.sha256(jar.read_bytes()).hexdigest()
+(WORK/'launch-record.json').write_text(json.dumps({'jarSha256':launch_digest,'neoforge':NEOFORGE_VERSION,'rtfPreset':RTF,'predictionProgress':PREDICTION_PROGRESS,'coldProgressFixture':PREDICTION_PROGRESS,'exteriorAudit':'--exterior-audit' in sys.argv,'baseline': '--progress-baseline' in sys.argv},indent=2),encoding='utf-8')
 with (WORK/'console.log').open('w',encoding='utf-8') as log:
     process=subprocess.Popen([str(java/'java.exe'),'@launch-args.txt'],cwd=WORK,stdout=log,stderr=subprocess.STDOUT,creationflags=subprocess.CREATE_NO_WINDOW)
-    try: process.wait(timeout=1800 if ACCURACY else 720 if QUALITY_VISUAL else 300)
-    except subprocess.TimeoutExpired: process.terminate(); process.wait(timeout=15)
+    timeout_seconds=1800 if ACCURACY else 900 if FULL or '--exterior-audit' in sys.argv else 720 if QUALITY_VISUAL else 420 if PREDICTION_PROGRESS else 300
+    try: process.wait(timeout=timeout_seconds)
+    except subprocess.TimeoutExpired:
+        print('Fixture exceeded '+str(timeout_seconds)+' seconds; terminating its isolated JVM',flush=True)
+        process.terminate()
+        try: process.wait(timeout=15)
+        except subprocess.TimeoutExpired: process.kill(); process.wait(timeout=15)
 log_text=(WORK/'console.log').read_text(encoding='utf-8',errors='replace')
-quality_error=QUALITY_VISUAL and any(message in log_text for message in ('VSS prediction tile build failed','OpenGL Error','Failed to compile shader'))
+assert hashlib.sha256(jar.read_bytes()).hexdigest()==launch_digest, 'Artifact changed during test'
+quality_error=(QUALITY_VISUAL or PREDICTION_PROGRESS) and any(message in log_text for message in ('VSS prediction tile build failed','OpenGL Error','Failed to compile shader'))
 if not result.exists() or not result.read_text(encoding='utf-8').startswith('PASS ') or process.returncode!=0 or quality_error:
     lines=(WORK/'console.log').read_text(encoding='utf-8',errors='replace').splitlines()
     errors=[(i,l) for i,l in enumerate(lines) if any(k in l for k in ('/ERROR]','/FATAL]','Caused by:','Crash report saved','Exception in thread'))]

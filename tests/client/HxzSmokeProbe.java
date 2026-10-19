@@ -36,11 +36,17 @@ public final class HxzSmokeProbe {
         try {
             if(world&&Boolean.getBoolean("hxz.smoke.qualityFirstContract")){
                 QualityFirstProbe.verify();
+                PredictionPriorityProbe.verify();
+                PredictionPressureProbe.verify();
                 Files.writeString(Path.of(System.getProperty("hxz.smoke.dir"),"result.txt"),"PASS quality-first rendering contract");mc.stop();return;
             }
             if(world&&Boolean.getBoolean("hxz.smoke.qualityVisual")){
                 if(!QualityVisualProbe.tick())return;
                 Files.writeString(Path.of(System.getProperty("hxz.smoke.dir"),"result.txt"),"PASS captured real vanilla/LOD handoff scene");mc.stop();return;
+            }
+            if(world&&Boolean.getBoolean("hxz.smoke.predictionProgress")){
+                if(!PredictionProgressProbe.tick())return;
+                Files.writeString(Path.of(System.getProperty("hxz.smoke.dir"),"result.txt"),"PASS measured detailed RTF prediction progress");mc.stop();return;
             }
             if(world&&System.getProperty("hxz.smoke.accuracy")!=null){
                 if(!TerrainAccuracyProbe.tick())return;

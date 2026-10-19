@@ -69,6 +69,9 @@ public final class TrackedTaskExecutor {
                 finally {
                     pendingTask.complete();
                 }
+            }, () -> {
+                pendingTask.complete();
+                reject(onRejected, "VSS disk task cancelled during shutdown");
             }, priority, this.sequence.incrementAndGet()));
             return true;
         }
@@ -95,13 +98,36 @@ public final class TrackedTaskExecutor {
             return this.submit(me.cortex.voxy.hxz.server.ServerSafetyPolicy.limits.diskTasks(),task,onRejected,priority);
         }
         try {
-            this.executorSupplier.get().execute(new PrioritizedTask(task, priority, this.sequence.incrementAndGet()));
+            this.executorSupplier.get().execute(new PrioritizedTask(task,
+                    () -> reject(onRejected, "VSS disk continuation cancelled during shutdown"),
+                    priority, this.sequence.incrementAndGet()));
             return true;
         }
         catch (RejectedExecutionException e) {
             if (onRejected != null) {
                 onRejected.accept(e);
             }
+            return false;
+        }
+    }
+
+    /** A single continuation of a manual task already owns its queue reservation. */
+    boolean executeReservedContinuation(DiskTaskRuntime.PendingDiskTask reservation, Runnable task,
+            Consumer<RejectedExecutionException> onRejected, int priority) {
+        Objects.requireNonNull(reservation, "reservation");
+        Objects.requireNonNull(task, "task");
+        if (reservation.isComplete()) return false;
+        try {
+            this.executorSupplier.get().execute(new PrioritizedTask(() -> {
+                if (!reservation.isComplete()) task.run();
+            }, () -> reject(onRejected, "VSS NBT continuation cancelled during shutdown"),
+                    priority, this.sequence.incrementAndGet()));
+            return true;
+        } catch (RejectedExecutionException error) {
+            if (onRejected != null) onRejected.accept(error);
+            return false;
+        } catch (RuntimeException error) {
+            if (onRejected != null) onRejected.accept(new RejectedExecutionException("VSS disk continuation unavailable", error));
             return false;
         }
     }
@@ -126,6 +152,9 @@ public final class TrackedTaskExecutor {
                     pendingTask.complete();
                     throw e;
                 }
+            }, () -> {
+                pendingTask.complete();
+                reject(onRejected, "VSS manual disk task cancelled during shutdown");
             }, priority, this.sequence.incrementAndGet()));
             return true;
         }
@@ -174,12 +203,25 @@ public final class TrackedTaskExecutor {
         }
     }
 
-    private record PrioritizedTask(Runnable delegate, int priority, long sequence) implements Runnable,
+    static void discard(Runnable task) {
+        if (task instanceof PrioritizedTask tracked) tracked.discard();
+    }
+
+    private record PrioritizedTask(Runnable delegate, Runnable onDiscard, int priority, long sequence,
+            AtomicBoolean claimed) implements Runnable,
     Comparable<PrioritizedTask>
     {
+        PrioritizedTask(Runnable delegate, Runnable onDiscard, int priority, long sequence) {
+            this(delegate, onDiscard, priority, sequence, new AtomicBoolean());
+        }
+
         @Override
         public void run() {
-            this.delegate.run();
+            if (this.claimed.compareAndSet(false, true)) this.delegate.run();
+        }
+
+        void discard() {
+            if (this.claimed.compareAndSet(false, true)) this.onDiscard.run();
         }
 
         @Override

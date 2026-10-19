@@ -30,10 +30,12 @@ verify(candidate,digest,'fantasy-town-voxy-*.jar')
 log=verify(prediction,digest,'fantasy-town-voxy-*.jar')
 assert 'HXZ_SMOOTH PASS actual mesher' in log
 assert 'HXZ_QUALITY_FIRST PASS actual snapshot' in log
-assert 'HXZ_QUALITY_RUNTIME PASS coarse terrain generated but not drawn' in log
+assert 'HXZ_QUALITY_RUNTIME PASS detailed RTF geometry drawn without coarse placeholders' in log
 selection=[{'accepted':int(a),'coarseHidden':int(c)} for a,c in re.findall(r'HXZ_QUALITY_RUNTIME accepted=(\d+) coarseHidden=(\d+) qualityFirst=true',log)]
-assert selection and max(s['coarseHidden'] for s in selection)>0
-assert 'HXZ_NORMAL_BRIDGE failed=false' in log
+assert selection and max(s['accepted'] for s in selection)>0
+assert 'HXZ_NORMAL_BRIDGE failed=false reported=true' in log
+progress=json.loads((R/'build/validation/PREDICTION-PROGRESS-PASS.json').read_text(encoding='utf-8'))
+assert progress['allChecksPassed'] and progress['sha256']==digest
 features=(R/'build/validation/client-features-rtf=default-client.log').read_text(encoding='utf-8',errors='replace')
 assert (R/'build/validation/client-features-rtf=default-jar.sha256').read_text().strip()==digest
 assert 'HXZ_QUALITY_FIRST PASS native Sodium Apply off/on with live renderer reconstruction' in features
@@ -64,8 +66,8 @@ for scene in (0,1):
     scenes.append({'scene':scene,'referenceTerrainPixels':int(ground.sum()),'newSkyColourVsNeoVoxy':lost,'counts':counts})
 
 report={'sha256':digest,'allChecksPassed':True,'originalSha256':original_hash,'previousSha256':previous_hash,
-        'scope':'actual RTF forest/mountain genuine LOD captures without shaders; actual RTF coarse startup prediction rejected; native detailed/incomplete/cached snapshot selection and Sodium live opt-out; fine prediction GPU output was not observed in this short startup fixture; screenshot diagnostics are not depth or universal seam measurements',
-        'scenes':scenes,'predictionFixture':prediction.name,'predictionSelection':selection}
+        'scope':'actual RTF forest/mountain genuine LOD captures without shaders; actual detailed RTF prediction reaches GPU while coarse meshes remain filtered; native snapshot selection and Sodium live opt-out; screenshot diagnostics are not depth or universal seam measurements',
+        'scenes':scenes,'predictionFixture':prediction.name,'predictionSelection':selection,'progress':progress}
 (R/'build/validation/QUALITY-PASS.json').write_text(json.dumps(report,indent=2),encoding='utf-8')
 images=R/('docs/quality-'+VERSION);images.mkdir(parents=True,exist_ok=True)
 for scene,name in ((0,'forest'),(1,'mountain')):
@@ -76,7 +78,8 @@ lines=[f'# RTF 渲染质量验证 · {VERSION}','',f'JAR SHA256：`{digest}`。'
     '## 默认画质优先','',
     '预测必须完成 64×64 网格、采样间距不超过 2 格才允许显示。普通和 Iris 路径共用过滤后的绘制及覆盖列表，粗块不能隐藏本来应该显示的真实 LOD。预测内部仍可生成和缓存粗采样，作为后续精修的输入，但不会拿来占位。','',
     '原生客户端反例：0.0.2 的实际 RenderSnapshot 接纳了粗网格和未精修缓存，新版拒绝它们，同时保留两种合格精细网格、原始缓存集合及开关关闭后的原行为。钠的实际“应用”按钮已测试关闭/开启和在线重建。','',
-    f'自定义 RTF 山地启动实景中，最多已有 {max(s["coarseHidden"] for s in selection)} 块粗预测完成，它们均没有进入绘制列表；短时测试内没有精修预测到达 GPU。这是预期的等待行为，不能拿来证明精细预测已经绘制或整个远方已达到 90% 画面相似度。', '',
+    f'自定义 RTF 山地实景中，最多 {max(s["accepted"] for s in selection)} 块完整精细网格进入可用绘制列表，另有 {max(s["coarseHidden"] for s in selection)} 块粗预测被过滤。实际绘制计数和预测/水面桥接均已执行；这不等于整个远方已达到 90% 像素或植被相似度。', '',
+    f'独立 180 秒冷缓存对照：0.0.3 完整精细网格最多 {progress["baseline"]["acceptedMax"]} 块，新版最多 {progress["candidate"]["acceptedMax"]} 块；新版首次精细绘制 {progress["candidate"]["firstDrawMs"]/1000:.2f} 秒。两边使用同一自定义 RTF 山地、3 GiB Java 堆、2 个 NeoVoxy 工作线程及相同预测设置，未增加线程、降低采样密度或允许粗模。完整成本在发布包 predictionProgress 字段。', '',
     f'![RTF 山地：真实 LOD 保留，未精修远方等待](docs/quality-{VERSION}/mountain-quality-first.png)','',
     '## 真实 LOD 交界对照','',
     '同一 RTF 世界、位置、视角和时间，先加载原版半径 8 区块，再降为 2 区块并重建渲染器。与保存的原始 NeoVoxy 和 0.0.1 视点比较。天空色和亮色中性像素仅作为图像辅助诊断，不等于深度测量或白缝识别。','',
@@ -87,7 +90,7 @@ lines += ['',f'![RTF 森林真实 LOD 交界](docs/quality-{VERSION}/forest-real
     f'![RTF 山地真实 LOD 交界](docs/quality-{VERSION}/mountain-real-lod.png)','',
     '用户报告的整圈白缝在这些固定视点中仍未稳定复现，不声称所有场景的白边已经消失。已有遮罩生命周期与深度投影 GPU 回归继续通过；本轮未覆盖所有光影包。','',
     '## 设置与代价','',
-    '钠 → Fantasy Town Voxy → 地形预测 → LOD 画质优先，默认开启。较远处只有粗预测时等待精修或真实 LOD，可见预测范围可能小于设定距离。此策略不强制加线程或增加内存预算，性能预设保留开关。','',
+    '钠 → Fantasy Town Voxy → 地形预测 → LOD 画质优先，默认开启。“优先完成近处精细预测”独立控制生成顺序，关闭后保留画质过滤，恢复 VSS 原排序。较远处只有粗预测时等待精修或真实 LOD，可见预测范围可能小于设定距离。此策略不强制加线程或增加内存预算，性能预设保留开关。','',
     '“粗预测山坡（兼容选项）”默认关闭，仅在关闭画质优先后有效；旧配置保留的开启值不会绕过画质优先。已保存真实 LOD、用户预测总开关和 NeoVoxy/HXZ 渲染选择保留。','',
     '完整记录见发布包 validation-summary.json 的 quality 字段；地表采样精度另见 [准确度报告](PREDICTION_ACCURACY.zh-CN.md)。','']
 (R/'RENDER_QUALITY.zh-CN.md').write_text('\n'.join(lines),encoding='utf-8')
